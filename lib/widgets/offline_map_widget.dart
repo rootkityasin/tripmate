@@ -17,29 +17,29 @@ class OfflineMapWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FlutterMap(
-      options: MapOptions(
-        center: center,
-        zoom: 13.0,
-      ),
+      options: MapOptions(initialCenter: center, initialZoom: 13.0),
       children: [
         TileLayer(
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.tripmate.app',
-          tileProvider: const NetworkTileProvider(), // Optional: You can later replace with cached provider
+          tileProvider: NetworkTileProvider(), // Removed const
         ),
         MarkerLayer(
-          markers: allUserLocations.map(
-            (loc) => Marker(
-              point: LatLng(loc.latitude, loc.longitude),
-              width: 40,
-              height: 40,
-              builder: (ctx) => const Icon(
-                Icons.location_on,
-                color: Colors.red,
-                size: 30,
-              ),
-            ),
-          ).toList(),
+          markers: allUserLocations
+              .map(
+                (loc) => Marker(
+                  point: LatLng(loc.latitude, loc.longitude),
+                  width: 40,
+                  height: 40,
+                  child: const Icon(
+                    // Changed from builder to child
+                    Icons.location_on,
+                    color: Colors.red,
+                    size: 30,
+                  ),
+                ),
+              )
+              .toList(),
         ),
       ],
     );
