@@ -3,7 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../models/user_location.dart';
-import '../services/map_tile_service.dart';
+import '../services/map_tile_service.dart' as service;
 
 class OfflineMapWidget extends StatefulWidget {
   final List<UserLocation> allUserLocations;
@@ -24,9 +24,10 @@ class OfflineMapWidget extends StatefulWidget {
 }
 
 class _OfflineMapWidgetState extends State<OfflineMapWidget> {
-  final MapTileService _tileService = MapTileService();
+  service.MapTileService? _tileService;
   final MapController _mapController = MapController();
   bool _isOfflineMode = false;
+  bool _isInitialized = false;
 
   @override
   void initState() {
@@ -35,11 +36,26 @@ class _OfflineMapWidgetState extends State<OfflineMapWidget> {
   }
 
   Future<void> _initializeTileService() async {
-    await _tileService.initialize();
-    final status = await _tileService.getCacheStatus();
-    setState(() {
-      _isOfflineMode = status['tileCount'] > 0;
-    });
+    if (_isInitialized) return;
+
+    try {
+      _tileService = service.MapTileService();
+      await _tileService!.initialize();
+      final status = await _tileService!.getCacheStatus();
+      setState(() {
+        _isOfflineMode = status['tileCount'] > 0;
+        _isInitialized = true;
+      });
+      print(
+        'OfflineMapWidget: Tile service initialized, offline mode: $_isOfflineMode',
+      );
+    } catch (e) {
+      print('OfflineMapWidget: Failed to initialize tile service: $e');
+      setState(() {
+        _isOfflineMode = false;
+        _isInitialized = true;
+      });
+    }
   }
 
   // Create different colored markers for different users
@@ -151,8 +167,8 @@ class _OfflineMapWidgetState extends State<OfflineMapWidget> {
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'com.tripmate.app',
-              tileProvider: _isOfflineMode
-                  ? _tileService.getCachedTileProvider()
+              tileProvider: (_isOfflineMode && _tileService != null)
+                  ? _tileService!.getCachedTileProvider()
                   : NetworkTileProvider(),
             ),
             MarkerLayer(

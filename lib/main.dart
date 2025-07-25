@@ -4,6 +4,7 @@ import 'models/trip_model.dart';
 import 'models/user_location.dart';
 import 'models/journal_entry.dart';
 import 'models/checklist_item.dart';
+import 'models/trip_details.dart';
 import 'screens/home/home_page.dart';
 
 void main() async {
@@ -14,6 +15,7 @@ void main() async {
   Hive.registerAdapter(UserLocationAdapter());
   Hive.registerAdapter(JournalEntryAdapter());
   Hive.registerAdapter(ChecklistItemAdapter());
+  Hive.registerAdapter(TripDetailsAdapter());
 
   await Hive.openBox('trips');
   await Hive.openBox('journal');
