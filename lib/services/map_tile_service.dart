@@ -9,21 +9,21 @@ class MapTileService {
   static const String _tileBaseUrl = 'https://tile.openstreetmap.org';
   static const int _maxZoomLevel = 18;
   static const int _minZoomLevel = 1;
-  
+
   // Cache directory for offline tiles
   late Directory _cacheDir;
   bool _isInitialized = false;
 
   Future<void> initialize() async {
     if (_isInitialized) return;
-    
+
     final appDir = await getApplicationDocumentsDirectory();
     _cacheDir = Directory('${appDir.path}/map_tiles');
-    
+
     if (!await _cacheDir.exists()) {
       await _cacheDir.create(recursive: true);
     }
-    
+
     _isInitialized = true;
   }
 
@@ -38,21 +38,22 @@ class MapTileService {
     Function(int current, int total)? onProgress,
   }) async {
     await initialize();
-    
+
     int totalTiles = 0;
     int currentTile = 0;
-    
+
     // Calculate total tiles to download
     for (int zoom = minZoom; zoom <= maxZoom; zoom++) {
       final bounds = _getBounds(northLat, southLat, eastLng, westLng, zoom);
-      totalTiles += (bounds['maxX']! - bounds['minX']! + 1) * 
-                   (bounds['maxY']! - bounds['minY']! + 1);
+      totalTiles +=
+          (bounds['maxX']! - bounds['minX']! + 1) *
+          (bounds['maxY']! - bounds['minY']! + 1);
     }
-    
+
     // Download tiles
     for (int zoom = minZoom; zoom <= maxZoom; zoom++) {
       final bounds = _getBounds(northLat, southLat, eastLng, westLng, zoom);
-      
+
       for (int x = bounds['minX']!; x <= bounds['maxX']!; x++) {
         for (int y = bounds['minY']!; y <= bounds['maxY']!; y++) {
           await _downloadTile(zoom, x, y);
@@ -72,7 +73,7 @@ class MapTileService {
     const double southLat = 22.0;
     const double eastLng = 92.4;
     const double westLng = 92.0;
-    
+
     await downloadAreaTiles(
       northLat: northLat,
       southLat: southLat,
@@ -86,14 +87,14 @@ class MapTileService {
 
   Future<void> _downloadTile(int zoom, int x, int y) async {
     final tileFile = File('${_cacheDir.path}/${zoom}_${x}_$y.png');
-    
+
     // Skip if tile already exists
     if (await tileFile.exists()) return;
-    
+
     try {
       final url = '$_tileBaseUrl/$zoom/$x/$y.png';
       final response = await http.get(Uri.parse(url));
-      
+
       if (response.statusCode == 200) {
         await tileFile.writeAsBytes(response.bodyBytes);
       }
@@ -102,18 +103,19 @@ class MapTileService {
     }
   }
 
-  Map<String, int> _getBounds(double north, double south, double east, double west, int zoom) {
+  Map<String, int> _getBounds(
+    double north,
+    double south,
+    double east,
+    double west,
+    int zoom,
+  ) {
     final minX = _lonToTileX(west, zoom);
     final maxX = _lonToTileX(east, zoom);
     final minY = _latToTileY(north, zoom);
     final maxY = _latToTileY(south, zoom);
-    
-    return {
-      'minX': minX,
-      'maxX': maxX,
-      'minY': minY,
-      'maxY': maxY,
-    };
+
+    return {'minX': minX, 'maxX': maxX, 'minY': minY, 'maxY': maxY};
   }
 
   int _lonToTileX(double lon, int zoom) {
@@ -122,7 +124,10 @@ class MapTileService {
 
   int _latToTileY(double lat, int zoom) {
     final latRad = lat * pi / 180.0;
-    return ((1.0 - log(tan(latRad) + 1.0 / cos(latRad)) / pi) / 2.0 * (1 << zoom)).floor();
+    return ((1.0 - log(tan(latRad) + 1.0 / cos(latRad)) / pi) /
+            2.0 *
+            (1 << zoom))
+        .floor();
   }
 
   // Custom tile provider that checks cache first
@@ -133,10 +138,10 @@ class MapTileService {
   // Get cache status
   Future<Map<String, dynamic>> getCacheStatus() async {
     await initialize();
-    
+
     final files = await _cacheDir.list().toList();
     final tileCount = files.where((f) => f.path.endsWith('.png')).length;
-    
+
     double cacheSize = 0;
     for (final file in files) {
       if (file is File) {
@@ -144,7 +149,7 @@ class MapTileService {
         cacheSize += stat.size;
       }
     }
-    
+
     return {
       'tileCount': tileCount,
       'cacheSizeMB': (cacheSize / (1024 * 1024)).toStringAsFixed(2),
@@ -155,7 +160,7 @@ class MapTileService {
   // Clear cache
   Future<void> clearCache() async {
     await initialize();
-    
+
     final files = await _cacheDir.list().toList();
     for (final file in files) {
       if (file is File) {
@@ -168,13 +173,15 @@ class MapTileService {
 // Custom tile provider that uses cached tiles when available
 class CachedTileProvider extends TileProvider {
   final Directory cacheDir;
-  
+
   CachedTileProvider({required this.cacheDir});
 
   @override
   ImageProvider getImage(TileCoordinates coordinates, TileLayer options) {
-    final tileFile = File('${cacheDir.path}/${coordinates.z}_${coordinates.x}_${coordinates.y}.png');
-    
+    final tileFile = File(
+      '${cacheDir.path}/${coordinates.z}_${coordinates.x}_${coordinates.y}.png',
+    );
+
     if (tileFile.existsSync()) {
       // Return cached tile
       return FileImage(tileFile);
