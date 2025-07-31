@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../journal/journal_screen.dart';
+import '../journal/journal_page.dart';
 import '../map/map_screen.dart';
 import '../trip/new_trip_page.dart';
 import '../../services/checklist_service.dart';
@@ -11,6 +12,7 @@ import '../../models/trip_details.dart';
 import '../../models/journal_entry.dart';
 import '../../services/location_service.dart';
 import '../../services/bluetooth_sync.dart';
+import '../../services/trip_service.dart';
 import '../../constants/app_styles.dart';
 
 class HomePage extends StatefulWidget {
@@ -189,6 +191,8 @@ class TripHomePage extends StatefulWidget {
 }
 
 class _TripHomePageState extends State<TripHomePage> {
+  final TripService _tripService = TripService();
+  final JournalService _journalService = JournalService();
   List<TripDetails> _recentTrips = [];
   List<JournalEntry> _recentJournals = [];
   bool _isLoading = true;
@@ -202,6 +206,10 @@ class _TripHomePageState extends State<TripHomePage> {
 
   Future<void> _loadRecentData() async {
     try {
+      // Initialize services
+      await _tripService.initialize();
+      await _journalService.initialize();
+
       // Check if Hive is initialized (for tests)
       if (!Hive.isBoxOpen('trips')) {
         // Skip loading data in test environment
@@ -211,23 +219,29 @@ class _TripHomePageState extends State<TripHomePage> {
         return;
       }
 
-      // Load recent trips and journals from Hive
-      final tripBox = await Hive.openBox<TripDetails>('trips');
-      final journalBox = await Hive.openBox<JournalEntry>('journal_entries');
+      // Load recent trips and journals from services
+      _recentTrips = _tripService.getRecentTrips(limit: 5);
+      _recentJournals = _journalService.getAllEntries()
+        ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      _recentJournals = _recentJournals.take(5).toList();
 
-      // Add sample data if boxes are empty (for demonstration)
-      if (tripBox.isEmpty) {
-        await _createSampleTrips(tripBox);
+      // Add sample data if no trips exist (for demonstration)
+      if (_recentTrips.isEmpty) {
+        await _createSampleTrips();
       }
-      if (journalBox.isEmpty) {
-        await _createSampleJournals(journalBox);
+      if (_recentJournals.isEmpty) {
+        await _createSampleJournals();
+      }
+
+      // Update journal counts for trips
+      for (final trip in _recentTrips) {
+        final journalCount = _journalService.getEntriesForTrip(trip.id).length;
+        if (trip.journalEntriesCount != journalCount) {
+          await _tripService.updateJournalCount(trip.id, journalCount);
+        }
       }
 
       setState(() {
-        _recentTrips = tripBox.values.toList()
-          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        _recentJournals = journalBox.values.toList()
-          ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
         _isLoading = false;
       });
     } catch (e) {
@@ -238,7 +252,7 @@ class _TripHomePageState extends State<TripHomePage> {
     }
   }
 
-  Future<void> _createSampleTrips(Box<TripDetails> tripBox) async {
+  Future<void> _createSampleTrips() async {
     final sampleTrips = [
       TripDetails(
         id: '1',
@@ -273,11 +287,14 @@ class _TripHomePageState extends State<TripHomePage> {
     ];
 
     for (final trip in sampleTrips) {
-      await tripBox.add(trip);
+      await _tripService.addTrip(trip);
     }
+    
+    // Reload trips after adding samples
+    _recentTrips = _tripService.getRecentTrips(limit: 5);
   }
 
-  Future<void> _createSampleJournals(Box<JournalEntry> journalBox) async {
+  Future<void> _createSampleJournals() async {
     final sampleJournals = [
       JournalEntry(
         id: '1',
@@ -318,8 +335,13 @@ class _TripHomePageState extends State<TripHomePage> {
     ];
 
     for (final journal in sampleJournals) {
-      await journalBox.add(journal);
+      await _journalService.addEntry(journal);
     }
+    
+    // Reload journals after adding samples
+    _recentJournals = _journalService.getAllEntries()
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    _recentJournals = _recentJournals.take(5).toList();
   }
 
   Future<void> _startNewTrip() async {
@@ -328,30 +350,35 @@ class _TripHomePageState extends State<TripHomePage> {
       MaterialPageRoute(builder: (context) => const NewTripPage()),
     );
 
-    if (result != null && result is TripDestination) {
-      // Create new trip from selected destination
+    if (result != null && result is Map<String, dynamic>) {
+      final destination = result['destination'] as TripDestination;
+      final startDate = result['startDate'] as DateTime;
+      final endDate = result['endDate'] as DateTime;
+      
+      // Create new trip from selected destination with dates
       final newTrip = TripDetails(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        destinationName: result.name,
-        description: result.description,
-        region: result.region,
-        latitude: result.coordinates.latitude,
-        longitude: result.coordinates.longitude,
+        destinationName: destination.name,
+        description: destination.description,
+        region: destination.region,
+        latitude: destination.coordinates.latitude,
+        longitude: destination.coordinates.longitude,
         createdAt: DateTime.now(),
-        attractions: result.attractions,
+        startDate: startDate,
+        endDate: endDate,
+        attractions: destination.attractions,
         hasOfflineMaps: true, // Maps were downloaded in NewTripPage
       );
 
-      // Save to Hive
-      final tripBox = await Hive.openBox<TripDetails>('trips');
-      await tripBox.add(newTrip);
+      // Save using TripService
+      await _tripService.addTrip(newTrip);
 
       // Create default checklist for the trip
       final checklistService = ChecklistService();
       await checklistService.initialize();
 
       // Create Bangladesh-specific checklist if destination is in Bangladesh
-      if (result.region.contains('Bangladesh') ||
+      if (destination.region.contains('Bangladesh') ||
           [
             'Bandarban',
             'Cox\'s Bazar',
@@ -361,7 +388,7 @@ class _TripHomePageState extends State<TripHomePage> {
             'Paharpur',
             'Dhaka',
             'Chittagong',
-          ].contains(result.name)) {
+          ].contains(destination.name)) {
         await checklistService.createDefaultBangladeshChecklist(newTrip.id);
       } else {
         await checklistService.createBasicChecklist(newTrip.id);
@@ -370,7 +397,7 @@ class _TripHomePageState extends State<TripHomePage> {
       // Create welcome journal entry
       final journalService = JournalService();
       await journalService.initialize();
-      await journalService.createWelcomeEntry(newTrip.id, result.name);
+      await journalService.createWelcomeEntry(newTrip.id, destination.name);
 
       // Refresh the list
       _loadRecentData();
@@ -378,12 +405,24 @@ class _TripHomePageState extends State<TripHomePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('New trip to ${result.name} created with checklist and journal!'),
+            content: Text('New trip to ${destination.name} created with checklist and journal!'),
             backgroundColor: AppStyles.successColor,
           ),
         );
       }
     }
+  }
+
+  void _openTripJournal(TripDetails trip) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => JournalPage(
+          tripId: trip.id,
+          tripName: trip.destinationName,
+        ),
+      ),
+    );
   }
 
   @override
@@ -838,81 +877,190 @@ class _TripHomePageState extends State<TripHomePage> {
   }
 
   Widget _buildTripCard(TripDetails trip) {
+    final journalEntries = _journalService.getEntriesForTrip(trip.id);
+    final hasJournalEntries = journalEntries.isNotEmpty;
+    
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
+      padding: const EdgeInsets.all(20),
+      decoration: AppStyles.modernCardDecoration(borderRadius: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              gradient: AppStyles.primaryGradient,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              Icons.location_on_rounded,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  trip.destinationName,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
+          Row(
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: AppStyles.modernButtonDecoration(borderRadius: 16),
+                child: Icon(
+                  Icons.location_on_rounded,
+                  color: Colors.white,
+                  size: 28,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  trip.region,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.schedule_rounded,
-                      size: 12,
-                      color: Colors.grey[500],
-                    ),
-                    const SizedBox(width: 4),
                     Text(
-                      trip.statusDisplay,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: trip.isCompleted ? Colors.green : Colors.orange,
-                        fontWeight: FontWeight.w500,
+                      trip.destinationName,
+                      style: AppStyles.headingSmall.copyWith(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      trip.region,
+                      style: AppStyles.bodyMedium.copyWith(
+                        color: AppStyles.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: AppStyles.glassDecoration(
+                        color: trip.isCompleted ? Colors.green.withOpacity(0.1) 
+                              : trip.isActive ? Colors.orange.withOpacity(0.1)
+                              : AppStyles.primaryColor.withOpacity(0.1),
+                        borderRadius: 12,
+                      ),
+                      child: Text(
+                        trip.statusDisplay,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: trip.isCompleted ? Colors.green[700]
+                                : trip.isActive ? Colors.orange[700]
+                                : AppStyles.primaryColor,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
                 ),
+              ),
+              Container(
+                decoration: AppStyles.glassDecoration(
+                  borderRadius: 16,
+                  withBorder: false,
+                ),
+                child: IconButton(
+                  onPressed: () => _openTripJournal(trip),
+                  icon: Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: AppStyles.textSecondary,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          
+          if (trip.startDate != null && trip.endDate != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: AppStyles.glassDecoration(
+                color: AppStyles.backgroundColor.withOpacity(0.5),
+                borderRadius: 12,
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today_rounded,
+                    size: 16,
+                    color: AppStyles.primaryColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${trip.startDate!.day}/${trip.startDate!.month}/${trip.startDate!.year} - ${trip.endDate!.day}/${trip.endDate!.month}/${trip.endDate!.year}',
+                    style: AppStyles.bodySmall.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppStyles.textPrimary,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    trip.durationText,
+                    style: AppStyles.bodySmall.copyWith(
+                      color: AppStyles.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          
+          const SizedBox(height: 16),
+          
+          // Journal entries section
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: AppStyles.glassDecoration(
+              color: hasJournalEntries 
+                ? Colors.green.withOpacity(0.1) 
+                : Colors.orange.withOpacity(0.1),
+              borderRadius: 12,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  hasJournalEntries ? Icons.auto_stories_rounded : Icons.add_rounded,
+                  size: 20,
+                  color: hasJournalEntries ? Colors.green[700] : Colors.orange[700],
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        hasJournalEntries 
+                          ? '${journalEntries.length} Journal ${journalEntries.length == 1 ? 'Entry' : 'Entries'}'
+                          : 'No Journal Entries Yet',
+                        style: AppStyles.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: hasJournalEntries ? Colors.green[700] : Colors.orange[700],
+                        ),
+                      ),
+                      if (hasJournalEntries) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Latest: ${journalEntries.first.title}',
+                          style: AppStyles.bodySmall.copyWith(
+                            color: AppStyles.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                Container(
+                  decoration: AppStyles.modernButtonDecoration(borderRadius: 12),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _openTripJournal(trip),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Text(
+                          hasJournalEntries ? 'View' : 'Add',
+                          style: AppStyles.bodySmall.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
-          ),
-          Icon(
-            Icons.arrow_forward_ios_rounded,
-            color: Colors.grey[400],
-            size: 16,
           ),
         ],
       ),

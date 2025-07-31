@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import '../../services/map_tile_service.dart';
 import '../../constants/app_styles.dart';
+import '../../widgets/modern_date_picker.dart';
 
 class NewTripPage extends StatefulWidget {
   const NewTripPage({super.key});
@@ -18,6 +19,8 @@ class _NewTripPageState extends State<NewTripPage> {
   double _downloadProgress = 0.0;
   String? _downloadingDestination;
   String _selectedCategory = 'all'; // Track selected category filter
+  DateTime? _startDate;
+  DateTime? _endDate;
 
   // Famous trip destinations in Bangladesh
   static final List<TripDestination> _bangladeshDestinations = [
@@ -232,7 +235,7 @@ class _NewTripPageState extends State<NewTripPage> {
       final mapService = await _getMapTileService();
 
       if (mapService == null) {
-        // Service initialization failed, skip download but still create trip
+        // Service initialization failed, skip download but still continue
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -242,7 +245,6 @@ class _NewTripPageState extends State<NewTripPage> {
               backgroundColor: Colors.orange,
             ),
           );
-          _startTrip(destination);
         }
         return;
       }
@@ -264,9 +266,6 @@ class _NewTripPageState extends State<NewTripPage> {
             backgroundColor: Colors.green,
           ),
         );
-
-        // Navigate to the trip page with this destination
-        _startTrip(destination);
       }
     } catch (e) {
       if (mounted) {
@@ -286,300 +285,373 @@ class _NewTripPageState extends State<NewTripPage> {
     }
   }
 
-  void _startTrip(TripDestination destination) {
-    // TODO: Navigate to trip planning page with selected destination
-    Navigator.pop(context, destination);
+  void _startTrip(TripDestination destination) async {
+    // Show date picker before proceeding
+    showDialog(
+      context: context,
+      builder: (context) => ModernDatePicker(
+        initialStartDate: _startDate,
+        initialEndDate: _endDate,
+        onDateRangeSelected: (startDate, endDate) async {
+          setState(() {
+            _startDate = startDate;
+            _endDate = endDate;
+          });
+          
+          // Start download animation immediately after date selection
+          await _downloadDestinationMaps(destination);
+          
+          // After download completes, create trip with dates and destination
+          final tripWithDates = {
+            'destination': destination,
+            'startDate': startDate,
+            'endDate': endDate,
+          };
+          
+          // Return to previous page with trip data
+          if (mounted) {
+            Navigator.pop(context, tripWithDates);
+          }
+        },
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Choose Your Destination'),
-        backgroundColor: AppStyles.primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: Column(
+      backgroundColor: AppStyles.backgroundColor,
+      body: Stack(
         children: [
-          Container(
-            color: AppStyles.primaryColor.withOpacity(0.1),
-            padding: const EdgeInsets.all(16.0),
+          SafeArea(
             child: Column(
               children: [
+                // Search bar with back button
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
+                  color: AppStyles.primaryColor.withOpacity(0.1),
+                  padding: const EdgeInsets.all(16.0),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.search_rounded,
-                        color: Colors.grey[600],
-                        size: 20,
+                      // Back button
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: Icon(
+                            Icons.arrow_back_rounded,
+                            color: AppStyles.primaryColor,
+                            size: 20,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 12),
+                      // Search bar
                       Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: _filterDestinations,
-                          decoration: InputDecoration(
-                            hintText: 'Search destination and explore',
-                            hintStyle: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.zero,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.black87,
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.search_rounded,
+                                color: Colors.grey[600],
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextField(
+                                  controller: _searchController,
+                                  onChanged: _filterDestinations,
+                                  decoration: InputDecoration(
+                                    hintText: 'Search destination and explore',
+                                    hintStyle: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                    ),
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF3F4F6),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.tune_rounded,
-                          color: Colors.grey[700],
-                          size: 18,
                         ),
                       ),
                     ],
                   ),
                 ),
-                if (_isDownloading) ...[
-                  const SizedBox(height: 16),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
+                // Explore by category section
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Explore by category',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
                         children: [
-                          Text(
-                            'Downloading $_downloadingDestination maps...',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                          Expanded(
+                            child: _buildCategoryCard(
+                              'All',
+                              Icons.apps_rounded,
+                              const Color(0xFF8E8E93),
+                              _selectedCategory == 'all',
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          LinearProgressIndicator(
-                            value: _downloadProgress,
-                            backgroundColor: Colors.grey[300],
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              AppStyles.primaryColor,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${(_downloadProgress * 100).toStringAsFixed(1)}% complete',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildCategoryCard(
+                              'Beach',
+                              Icons.beach_access_rounded,
+                              const Color(0xFF007AFF),
+                              _selectedCategory == 'beach',
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          // Explore by category section
-          Container(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Explore by category',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildCategoryCard(
-                        'All',
-                        Icons.apps_rounded,
-                        const Color(0xFF8E8E93),
-                        _selectedCategory == 'all',
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildCategoryCard(
-                        'Beach',
-                        Icons.beach_access_rounded,
-                        const Color(0xFF007AFF),
-                        _selectedCategory == 'beach',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildCategoryCard(
-                        'Camping',
-                        Icons.nature_people_rounded,
-                        const Color(0xFF34C759),
-                        _selectedCategory == 'camping',
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildCategoryCard(
-                        'City',
-                        Icons.location_city_rounded,
-                        const Color(0xFFFF9500),
-                        _selectedCategory == 'city',
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16.0),
-              itemCount: _filteredDestinations.length,
-              itemBuilder: (context, index) {
-                final destination = _filteredDestinations[index];
-                final isDownloading =
-                    _downloadingDestination == destination.name;
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12.0),
-                  elevation: 3,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: isDownloading ? null : () => _startTrip(destination),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(height: 8),
+                      Row(
                         children: [
-                          Row(
-                            children: [
-                              Text(
-                                destination.image,
-                                style: const TextStyle(fontSize: 32),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                          Expanded(
+                            child: _buildCategoryCard(
+                              'Camping',
+                              Icons.nature_people_rounded,
+                              const Color(0xFF34C759),
+                              _selectedCategory == 'camping',
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildCategoryCard(
+                              'City',
+                              Icons.location_city_rounded,
+                              const Color(0xFFFF9500),
+                              _selectedCategory == 'city',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16.0),
+                    itemCount: _filteredDestinations.length,
+                    itemBuilder: (context, index) {
+                      final destination = _filteredDestinations[index];
+                      final isDownloading =
+                          _downloadingDestination == destination.name;
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12.0),
+                        elevation: 3,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: isDownloading ? null : () => _startTrip(destination),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
                                   children: [
                                     Text(
-                                      destination.name,
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                      destination.image,
+                                      style: const TextStyle(fontSize: 32),
                                     ),
-                                    Text(
-                                      destination.region,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: AppStyles.primaryColor,
-                                        fontWeight: FontWeight.w500,
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            destination.name,
+                                            style: const TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          Text(
+                                            destination.region,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: AppStyles.primaryColor,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
                                 ),
-                              ),
-                              IconButton(
-                                onPressed: isDownloading
-                                    ? null
-                                    : () =>
-                                          _downloadDestinationMaps(destination),
-                                icon: Icon(
-                                  isDownloading
-                                      ? Icons.hourglass_empty
-                                      : Icons.download,
-                                  color: isDownloading
-                                      ? Colors.grey
-                                      : AppStyles.primaryColor,
-                                ),
-                                tooltip: 'Download offline maps',
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            destination.description,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Popular Attractions:',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 4,
-                            children: destination.attractions.map((attraction) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppStyles.primaryColor.withOpacity(
-                                    0.1,
+                                const SizedBox(height: 8),
+                                Text(
+                                  destination.description,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey,
                                   ),
-                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: Text(
-                                  attraction,
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Popular Attractions:',
                                   style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppStyles.primaryColor,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                              );
-                            }).toList(),
+                                const SizedBox(height: 4),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 4,
+                                  children: destination.attractions.map((attraction) {
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppStyles.primaryColor.withOpacity(
+                                          0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        attraction,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppStyles.primaryColor,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ),
                           ),
-                        ],
-                      ),
-                    ),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
+                ),
+              ],
             ),
           ),
+          // Beautiful download animation overlay - fullscreen modal
+          if (_isDownloading)
+            Container(
+              color: Colors.black.withOpacity(0.8),
+              child: Center(
+                child: Container(
+                  margin: const EdgeInsets.all(32),
+                  padding: const EdgeInsets.all(32),
+                  decoration: AppStyles.modernCardDecoration(borderRadius: 32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Animated download icon
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: AppStyles.modernButtonDecoration(borderRadius: 40),
+                        child: const Icon(
+                          Icons.cloud_download_rounded,
+                          color: Colors.white,
+                          size: 40,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Downloading Maps',
+                        style: AppStyles.headingMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Preparing $_downloadingDestination for offline use...',
+                        style: AppStyles.bodyLarge.copyWith(
+                          color: AppStyles.textSecondary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      
+                      // Modern progress indicator
+                      Container(
+                        width: double.infinity,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: AppStyles.backgroundColor,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: _downloadProgress,
+                            backgroundColor: Colors.transparent,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppStyles.primaryColor,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        '${(_downloadProgress * 100).toStringAsFixed(0)}% Complete',
+                        style: AppStyles.bodyMedium.copyWith(
+                          color: AppStyles.primaryColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Please wait while we download maps for your trip',
+                        style: AppStyles.bodySmall.copyWith(
+                          color: AppStyles.textSecondary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -589,14 +661,14 @@ class _NewTripPageState extends State<NewTripPage> {
     return GestureDetector(
       onTap: () => _selectCategory(title),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isActive ? color : Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
+              blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
@@ -607,13 +679,13 @@ class _NewTripPageState extends State<NewTripPage> {
             Icon(
               icon,
               color: isActive ? Colors.white : color,
-              size: 24,
+              size: 20,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               title,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: isActive ? Colors.white : Colors.black87,
               ),
