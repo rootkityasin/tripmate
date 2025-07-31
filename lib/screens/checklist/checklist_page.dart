@@ -26,34 +26,118 @@ class _ChecklistPageState extends State<ChecklistPage>
   // Predefined checklist templates
   final Map<String, List<Map<String, dynamic>>> _templates = {
     'Essential Items': [
-      {'title': 'Passport/ID', 'priority': 5, 'description': 'Valid travel documents'},
-      {'title': 'Flight/Bus Tickets', 'priority': 5, 'description': 'Booking confirmations'},
-      {'title': 'Hotel Reservations', 'priority': 4, 'description': 'Accommodation bookings'},
-      {'title': 'Travel Insurance', 'priority': 4, 'description': 'Valid insurance policy'},
-      {'title': 'Emergency Contacts', 'priority': 5, 'description': 'Important phone numbers'},
-      {'title': 'Cash & Cards', 'priority': 5, 'description': 'Local currency and cards'},
+      {
+        'title': 'Passport/ID',
+        'priority': 5,
+        'description': 'Valid travel documents',
+      },
+      {
+        'title': 'Flight/Bus Tickets',
+        'priority': 5,
+        'description': 'Booking confirmations',
+      },
+      {
+        'title': 'Hotel Reservations',
+        'priority': 4,
+        'description': 'Accommodation bookings',
+      },
+      {
+        'title': 'Travel Insurance',
+        'priority': 4,
+        'description': 'Valid insurance policy',
+      },
+      {
+        'title': 'Emergency Contacts',
+        'priority': 5,
+        'description': 'Important phone numbers',
+      },
+      {
+        'title': 'Cash & Cards',
+        'priority': 5,
+        'description': 'Local currency and cards',
+      },
     ],
     'Clothing & Personal': [
-      {'title': 'Comfortable Walking Shoes', 'priority': 4, 'description': 'For long walks'},
-      {'title': 'Weather-appropriate Clothes', 'priority': 4, 'description': 'Check destination weather'},
-      {'title': 'Toiletries', 'priority': 3, 'description': 'Toothbrush, shampoo, etc.'},
-      {'title': 'Medications', 'priority': 5, 'description': 'Prescription & first aid'},
-      {'title': 'Sunscreen & Sunglasses', 'priority': 3, 'description': 'UV protection'},
-      {'title': 'Phone Charger', 'priority': 4, 'description': 'Don\'t forget the cable!'},
+      {
+        'title': 'Comfortable Walking Shoes',
+        'priority': 4,
+        'description': 'For long walks',
+      },
+      {
+        'title': 'Weather-appropriate Clothes',
+        'priority': 4,
+        'description': 'Check destination weather',
+      },
+      {
+        'title': 'Toiletries',
+        'priority': 3,
+        'description': 'Toothbrush, shampoo, etc.',
+      },
+      {
+        'title': 'Medications',
+        'priority': 5,
+        'description': 'Prescription & first aid',
+      },
+      {
+        'title': 'Sunscreen & Sunglasses',
+        'priority': 3,
+        'description': 'UV protection',
+      },
+      {
+        'title': 'Phone Charger',
+        'priority': 4,
+        'description': 'Don\'t forget the cable!',
+      },
     ],
     'Electronics & Gadgets': [
-      {'title': 'Power Bank', 'priority': 4, 'description': 'For charging on the go'},
+      {
+        'title': 'Power Bank',
+        'priority': 4,
+        'description': 'For charging on the go',
+      },
       {'title': 'Camera', 'priority': 3, 'description': 'Capture memories'},
-      {'title': 'Universal Adapter', 'priority': 3, 'description': 'For different outlets'},
-      {'title': 'Headphones', 'priority': 2, 'description': 'For entertainment'},
-      {'title': 'Flashlight', 'priority': 2, 'description': 'Emergency lighting'},
+      {
+        'title': 'Universal Adapter',
+        'priority': 3,
+        'description': 'For different outlets',
+      },
+      {
+        'title': 'Headphones',
+        'priority': 2,
+        'description': 'For entertainment',
+      },
+      {
+        'title': 'Flashlight',
+        'priority': 2,
+        'description': 'Emergency lighting',
+      },
     ],
     'Bangladesh Specific': [
-      {'title': 'Mosquito Repellent', 'priority': 4, 'description': 'Essential for tropical climate'},
-      {'title': 'Light Cotton Clothes', 'priority': 4, 'description': 'For humid weather'},
-      {'title': 'Umbrella/Raincoat', 'priority': 3, 'description': 'For monsoon season'},
-      {'title': 'Local SIM Card Info', 'priority': 3, 'description': 'GP, Robi, Banglalink options'},
-      {'title': 'Bengali Phrasebook', 'priority': 2, 'description': 'Basic communication'},
+      {
+        'title': 'Mosquito Repellent',
+        'priority': 4,
+        'description': 'Essential for tropical climate',
+      },
+      {
+        'title': 'Light Cotton Clothes',
+        'priority': 4,
+        'description': 'For humid weather',
+      },
+      {
+        'title': 'Umbrella/Raincoat',
+        'priority': 3,
+        'description': 'For monsoon season',
+      },
+      {
+        'title': 'Local SIM Card Info',
+        'priority': 3,
+        'description': 'GP, Robi, Banglalink options',
+      },
+      {
+        'title': 'Bengali Phrasebook',
+        'priority': 2,
+        'description': 'Basic communication',
+      },
     ],
   };
 
@@ -89,7 +173,8 @@ class _ChecklistPageState extends State<ChecklistPage>
       _templates.forEach((category, items) {
         for (final template in items) {
           final item = ChecklistItem(
-            id: DateTime.now().millisecondsSinceEpoch.toString() +
+            id:
+                DateTime.now().millisecondsSinceEpoch.toString() +
                 items.indexOf(template).toString(),
             tripId: widget.tripId,
             title: template['title'],
@@ -106,9 +191,11 @@ class _ChecklistPageState extends State<ChecklistPage>
 
   List<ChecklistItem> _getItemsByCategory(String category) {
     return _checklistBox.values
-        .where((item) =>
-            item.tripId == widget.tripId &&
-            item.category == category.toLowerCase().replaceAll(' ', '_'))
+        .where(
+          (item) =>
+              item.tripId == widget.tripId &&
+              item.category == category.toLowerCase().replaceAll(' ', '_'),
+        )
         .toList()
       ..sort((a, b) => b.priority.compareTo(a.priority));
   }
@@ -188,10 +275,7 @@ class _ChecklistPageState extends State<ChecklistPage>
         backgroundColor: AppStyles.primaryColor,
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: _addCustomItem,
-          ),
+          IconButton(icon: const Icon(Icons.add), onPressed: _addCustomItem),
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -373,10 +457,7 @@ class _AddItemDialog extends StatefulWidget {
   final String tripId;
   final Function(ChecklistItem) onAdd;
 
-  const _AddItemDialog({
-    required this.tripId,
-    required this.onAdd,
-  });
+  const _AddItemDialog({required this.tripId, required this.onAdd});
 
   @override
   State<_AddItemDialog> createState() => _AddItemDialogState();
@@ -386,7 +467,7 @@ class _AddItemDialogState extends State<_AddItemDialog> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   int _priority = 3;
-  String _category = 'personal';
+  final String _category = 'personal';
 
   @override
   Widget build(BuildContext context) {

@@ -17,6 +17,7 @@ class _NewTripPageState extends State<NewTripPage> {
   bool _isDownloading = false;
   double _downloadProgress = 0.0;
   String? _downloadingDestination;
+  String _selectedCategory = 'all'; // Track selected category filter
 
   // Famous trip destinations in Bangladesh
   static final List<TripDestination> _bangladeshDestinations = [
@@ -26,6 +27,7 @@ class _NewTripPageState extends State<NewTripPage> {
       image: '🏔️',
       region: 'Chittagong Hill Tracts',
       coordinates: const LatLng(22.1953, 92.2184),
+      category: 'Camping',
       attractions: [
         'Nilgiri Hills',
         'Golden Temple',
@@ -39,6 +41,7 @@ class _NewTripPageState extends State<NewTripPage> {
       image: '🏖️',
       region: 'Chittagong',
       coordinates: const LatLng(21.4272, 92.0058),
+      category: 'Beach',
       attractions: [
         'Cox\'s Bazar Beach',
         'Himchari',
@@ -52,6 +55,7 @@ class _NewTripPageState extends State<NewTripPage> {
       image: '🛶',
       region: 'Chittagong Hill Tracts',
       coordinates: const LatLng(22.6504, 92.1751),
+      category: 'Camping',
       attractions: [
         'Kaptai Lake',
         'Hanging Bridge',
@@ -65,6 +69,7 @@ class _NewTripPageState extends State<NewTripPage> {
       image: '🌲',
       region: 'Chittagong Hill Tracts',
       coordinates: const LatLng(23.1193, 91.9847),
+      category: 'Camping',
       attractions: [
         'Alutila Cave',
         'Richhang Waterfall',
@@ -78,6 +83,7 @@ class _NewTripPageState extends State<NewTripPage> {
       image: '🍃',
       region: 'Sylhet',
       coordinates: const LatLng(24.8949, 91.8687),
+      category: 'City',
       attractions: [
         'Ratargul Swamp Forest',
         'Jaflong',
@@ -91,6 +97,7 @@ class _NewTripPageState extends State<NewTripPage> {
       image: '🐅',
       region: 'Khulna',
       coordinates: const LatLng(22.4419, 89.1847),
+      category: 'Camping',
       attractions: [
         'Tiger spotting',
         'Mangrove forests',
@@ -104,6 +111,7 @@ class _NewTripPageState extends State<NewTripPage> {
       image: '☕',
       region: 'Sylhet',
       coordinates: const LatLng(24.3065, 91.7296),
+      category: 'Camping',
       attractions: [
         'Lawachara National Park',
         'Tea Gardens',
@@ -117,6 +125,7 @@ class _NewTripPageState extends State<NewTripPage> {
       image: '🌅',
       region: 'Barisal',
       coordinates: const LatLng(21.8174, 90.1198),
+      category: 'Beach',
       attractions: [
         'Kuakata Beach',
         'Fatrar Char',
@@ -138,27 +147,37 @@ class _NewTripPageState extends State<NewTripPage> {
     super.dispose();
   }
 
-  void _filterDestinations(String query) {
+  void _filterDestinations([String? query]) {
     setState(() {
-      if (query.isEmpty) {
-        _filteredDestinations = _bangladeshDestinations;
+      final searchQuery = query ?? _searchController.text;
+      
+      _filteredDestinations = _bangladeshDestinations
+          .where((destination) {
+            // Apply search filter
+            final matchesSearch = searchQuery.isEmpty ||
+                destination.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
+                destination.region.toLowerCase().contains(searchQuery.toLowerCase()) ||
+                destination.description.toLowerCase().contains(searchQuery.toLowerCase());
+            
+            // Apply category filter
+            final matchesCategory = _selectedCategory == 'all' || 
+                destination.category.toLowerCase() == _selectedCategory.toLowerCase();
+            
+            return matchesSearch && matchesCategory;
+          })
+          .toList();
+    });
+  }
+
+  void _selectCategory(String category) {
+    setState(() {
+      if (category.toLowerCase() == 'all') {
+        _selectedCategory = 'all';
       } else {
-        _filteredDestinations = _bangladeshDestinations
-            .where(
-              (destination) =>
-                  destination.name.toLowerCase().contains(
-                    query.toLowerCase(),
-                  ) ||
-                  destination.region.toLowerCase().contains(
-                    query.toLowerCase(),
-                  ) ||
-                  destination.description.toLowerCase().contains(
-                    query.toLowerCase(),
-                  ),
-            )
-            .toList();
+        _selectedCategory = category.toLowerCase();
       }
     });
+    _filterDestinations();
   }
 
   Future<MapTileService?> _getMapTileService() async {
@@ -288,18 +307,59 @@ class _NewTripPageState extends State<NewTripPage> {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                TextField(
-                  controller: _searchController,
-                  onChanged: _filterDestinations,
-                  decoration: InputDecoration(
-                    hintText: 'Search destinations...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.search_rounded,
+                        color: Colors.grey[600],
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: _filterDestinations,
+                          decoration: InputDecoration(
+                            hintText: 'Search destination and explore',
+                            hintStyle: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3F4F6),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.tune_rounded,
+                          color: Colors.grey[700],
+                          size: 18,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 if (_isDownloading) ...[
@@ -337,6 +397,67 @@ class _NewTripPageState extends State<NewTripPage> {
                     ),
                   ),
                 ],
+              ],
+            ),
+          ),
+          // Explore by category section
+          Container(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Explore by category',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildCategoryCard(
+                        'All',
+                        Icons.apps_rounded,
+                        const Color(0xFF8E8E93),
+                        _selectedCategory == 'all',
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildCategoryCard(
+                        'Beach',
+                        Icons.beach_access_rounded,
+                        const Color(0xFF007AFF),
+                        _selectedCategory == 'beach',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildCategoryCard(
+                        'Camping',
+                        Icons.nature_people_rounded,
+                        const Color(0xFF34C759),
+                        _selectedCategory == 'camping',
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildCategoryCard(
+                        'City',
+                        Icons.location_city_rounded,
+                        const Color(0xFFFF9500),
+                        _selectedCategory == 'city',
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -463,6 +584,45 @@ class _NewTripPageState extends State<NewTripPage> {
       ),
     );
   }
+
+  Widget _buildCategoryCard(String title, IconData icon, Color color, bool isActive) {
+    return GestureDetector(
+      onTap: () => _selectCategory(title),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isActive ? color : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              icon,
+              color: isActive ? Colors.white : color,
+              size: 24,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: isActive ? Colors.white : Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class TripDestination {
@@ -472,6 +632,7 @@ class TripDestination {
   final String region;
   final LatLng coordinates;
   final List<String> attractions;
+  final String category; // Beach, Camping, City, etc.
 
   const TripDestination({
     required this.name,
@@ -480,5 +641,6 @@ class TripDestination {
     required this.region,
     required this.coordinates,
     required this.attractions,
+    required this.category,
   });
 }

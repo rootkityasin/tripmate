@@ -16,10 +16,8 @@ class ChecklistService {
   // Get all checklist items for a specific trip
   List<ChecklistItem> getItemsForTrip(String tripId) {
     if (_box == null) return [];
-    
-    return _box!.values
-        .where((item) => item.tripId == tripId)
-        .toList()
+
+    return _box!.values.where((item) => item.tripId == tripId).toList()
       ..sort((a, b) {
         if (a.isCompleted != b.isCompleted) {
           return a.isCompleted ? 1 : -1;
@@ -29,13 +27,18 @@ class ChecklistService {
   }
 
   // Get items by category for a trip
-  List<ChecklistItem> getItemsByCategoryForTrip(String tripId, String category) {
+  List<ChecklistItem> getItemsByCategoryForTrip(
+    String tripId,
+    String category,
+  ) {
     if (_box == null) return [];
-    
+
     return _box!.values
-        .where((item) => 
-            item.tripId == tripId && 
-            item.category == category.toLowerCase().replaceAll(' ', '_'))
+        .where(
+          (item) =>
+              item.tripId == tripId &&
+              item.category == category.toLowerCase().replaceAll(' ', '_'),
+        )
         .toList()
       ..sort((a, b) => b.priority.compareTo(a.priority));
   }
@@ -68,7 +71,7 @@ class ChecklistService {
     final items = getItemsForTrip(tripId);
     final completed = items.where((item) => item.isCompleted).length;
     final total = items.length;
-    
+
     return {
       'completed': completed,
       'total': total,
@@ -79,38 +82,123 @@ class ChecklistService {
 
   // Get items by priority
   List<ChecklistItem> getHighPriorityItems(String tripId) {
-    return getItemsForTrip(tripId)
-        .where((item) => item.priority >= 4 && !item.isCompleted)
-        .toList();
+    return getItemsForTrip(
+      tripId,
+    ).where((item) => item.priority >= 4 && !item.isCompleted).toList();
   }
 
   // Create default checklist items for Bangladesh trip
   Future<void> createDefaultBangladeshChecklist(String tripId) async {
     final templates = [
       // Essential Documents
-      {'title': 'Passport/National ID', 'category': 'essential_items', 'priority': 5, 'description': 'Valid identification document'},
-      {'title': 'Travel Insurance', 'category': 'essential_items', 'priority': 4, 'description': 'Medical and travel coverage'},
-      {'title': 'Hotel Bookings', 'category': 'essential_items', 'priority': 4, 'description': 'Accommodation confirmations'},
-      {'title': 'Emergency Contacts', 'category': 'essential_items', 'priority': 5, 'description': 'Important phone numbers'},
-      
+      {
+        'title': 'Passport/National ID',
+        'category': 'essential_items',
+        'priority': 5,
+        'description': 'Valid identification document',
+      },
+      {
+        'title': 'Travel Insurance',
+        'category': 'essential_items',
+        'priority': 4,
+        'description': 'Medical and travel coverage',
+      },
+      {
+        'title': 'Hotel Bookings',
+        'category': 'essential_items',
+        'priority': 4,
+        'description': 'Accommodation confirmations',
+      },
+      {
+        'title': 'Emergency Contacts',
+        'category': 'essential_items',
+        'priority': 5,
+        'description': 'Important phone numbers',
+      },
+
       // Personal Items
-      {'title': 'Mosquito Repellent', 'category': 'clothing_&_personal', 'priority': 5, 'description': 'Essential for tropical climate'},
-      {'title': 'Light Cotton Clothing', 'category': 'clothing_&_personal', 'priority': 4, 'description': 'For humid weather'},
-      {'title': 'Comfortable Walking Shoes', 'category': 'clothing_&_personal', 'priority': 4, 'description': 'For exploring'},
-      {'title': 'Umbrella/Raincoat', 'category': 'clothing_&_personal', 'priority': 3, 'description': 'For monsoon protection'},
-      {'title': 'Sunscreen & Sunglasses', 'category': 'clothing_&_personal', 'priority': 3, 'description': 'UV protection'},
-      {'title': 'Personal Medications', 'category': 'clothing_&_personal', 'priority': 5, 'description': 'Prescription drugs and first aid'},
-      
+      {
+        'title': 'Mosquito Repellent',
+        'category': 'clothing_&_personal',
+        'priority': 5,
+        'description': 'Essential for tropical climate',
+      },
+      {
+        'title': 'Light Cotton Clothing',
+        'category': 'clothing_&_personal',
+        'priority': 4,
+        'description': 'For humid weather',
+      },
+      {
+        'title': 'Comfortable Walking Shoes',
+        'category': 'clothing_&_personal',
+        'priority': 4,
+        'description': 'For exploring',
+      },
+      {
+        'title': 'Umbrella/Raincoat',
+        'category': 'clothing_&_personal',
+        'priority': 3,
+        'description': 'For monsoon protection',
+      },
+      {
+        'title': 'Sunscreen & Sunglasses',
+        'category': 'clothing_&_personal',
+        'priority': 3,
+        'description': 'UV protection',
+      },
+      {
+        'title': 'Personal Medications',
+        'category': 'clothing_&_personal',
+        'priority': 5,
+        'description': 'Prescription drugs and first aid',
+      },
+
       // Electronics
-      {'title': 'Phone Charger', 'category': 'electronics_&_gadgets', 'priority': 4, 'description': 'Don\'t forget the cable!'},
-      {'title': 'Power Bank', 'category': 'electronics_&_gadgets', 'priority': 4, 'description': 'For charging on the go'},
-      {'title': 'Universal Power Adapter', 'category': 'electronics_&_gadgets', 'priority': 3, 'description': 'Type C/G plugs used in Bangladesh'},
-      {'title': 'Camera', 'category': 'electronics_&_gadgets', 'priority': 3, 'description': 'Capture beautiful memories'},
-      
+      {
+        'title': 'Phone Charger',
+        'category': 'electronics_&_gadgets',
+        'priority': 4,
+        'description': 'Don\'t forget the cable!',
+      },
+      {
+        'title': 'Power Bank',
+        'category': 'electronics_&_gadgets',
+        'priority': 4,
+        'description': 'For charging on the go',
+      },
+      {
+        'title': 'Universal Power Adapter',
+        'category': 'electronics_&_gadgets',
+        'priority': 3,
+        'description': 'Type C/G plugs used in Bangladesh',
+      },
+      {
+        'title': 'Camera',
+        'category': 'electronics_&_gadgets',
+        'priority': 3,
+        'description': 'Capture beautiful memories',
+      },
+
       // Bangladesh Specific
-      {'title': 'Bangladesh Taka (Cash)', 'category': 'essential_items', 'priority': 5, 'description': 'Local currency for transactions'},
-      {'title': 'Local SIM Card Info', 'category': 'electronics_&_gadgets', 'priority': 3, 'description': 'GP, Robi, or Banglalink'},
-      {'title': 'Bengali Phrasebook/App', 'category': 'electronics_&_gadgets', 'priority': 2, 'description': 'Basic communication help'},
+      {
+        'title': 'Bangladesh Taka (Cash)',
+        'category': 'essential_items',
+        'priority': 5,
+        'description': 'Local currency for transactions',
+      },
+      {
+        'title': 'Local SIM Card Info',
+        'category': 'electronics_&_gadgets',
+        'priority': 3,
+        'description': 'GP, Robi, or Banglalink',
+      },
+      {
+        'title': 'Bengali Phrasebook/App',
+        'category': 'electronics_&_gadgets',
+        'priority': 2,
+        'description': 'Basic communication help',
+      },
     ];
 
     for (int i = 0; i < templates.length; i++) {
@@ -131,12 +219,42 @@ class ChecklistService {
   // Create minimal checklist for any destination
   Future<void> createBasicChecklist(String tripId) async {
     final basicItems = [
-      {'title': 'Travel Documents', 'category': 'essential_items', 'priority': 5, 'description': 'ID, tickets, bookings'},
-      {'title': 'Money & Cards', 'category': 'essential_items', 'priority': 5, 'description': 'Cash and payment methods'},
-      {'title': 'Phone & Charger', 'category': 'electronics_&_gadgets', 'priority': 4, 'description': 'Stay connected'},
-      {'title': 'Medications', 'category': 'clothing_&_personal', 'priority': 4, 'description': 'Personal health items'},
-      {'title': 'Comfortable Clothes', 'category': 'clothing_&_personal', 'priority': 3, 'description': 'Weather-appropriate'},
-      {'title': 'Camera/Phone', 'category': 'electronics_&_gadgets', 'priority': 3, 'description': 'Capture memories'},
+      {
+        'title': 'Travel Documents',
+        'category': 'essential_items',
+        'priority': 5,
+        'description': 'ID, tickets, bookings',
+      },
+      {
+        'title': 'Money & Cards',
+        'category': 'essential_items',
+        'priority': 5,
+        'description': 'Cash and payment methods',
+      },
+      {
+        'title': 'Phone & Charger',
+        'category': 'electronics_&_gadgets',
+        'priority': 4,
+        'description': 'Stay connected',
+      },
+      {
+        'title': 'Medications',
+        'category': 'clothing_&_personal',
+        'priority': 4,
+        'description': 'Personal health items',
+      },
+      {
+        'title': 'Comfortable Clothes',
+        'category': 'clothing_&_personal',
+        'priority': 3,
+        'description': 'Weather-appropriate',
+      },
+      {
+        'title': 'Camera/Phone',
+        'category': 'electronics_&_gadgets',
+        'priority': 3,
+        'description': 'Capture memories',
+      },
     ];
 
     for (int i = 0; i < basicItems.length; i++) {
@@ -166,29 +284,36 @@ class ChecklistService {
   String exportChecklistAsText(String tripId, String tripName) {
     final items = getItemsForTrip(tripId);
     final stats = getTripStats(tripId);
-    
+
     final buffer = StringBuffer();
     buffer.writeln('$tripName - Travel Checklist');
     buffer.writeln('Generated: ${DateTime.now().toString().split('.')[0]}');
-    buffer.writeln('Progress: ${stats['completed']}/${stats['total']} (${stats['percentage']}%)');
+    buffer.writeln(
+      'Progress: ${stats['completed']}/${stats['total']} (${stats['percentage']}%)',
+    );
     buffer.writeln('');
-    
+
     final categories = <String, List<ChecklistItem>>{};
     for (final item in items) {
-      final category = item.category.replaceAll('_', ' ').split(' ').map((word) => 
-          word[0].toUpperCase() + word.substring(1)).join(' ');
+      final category = item.category
+          .replaceAll('_', ' ')
+          .split(' ')
+          .map((word) => word[0].toUpperCase() + word.substring(1))
+          .join(' ');
       categories.putIfAbsent(category, () => []).add(item);
     }
-    
+
     categories.forEach((category, categoryItems) {
       buffer.writeln('## $category');
       for (final item in categoryItems) {
         final status = item.isCompleted ? '✅' : '⬜';
-        buffer.writeln('$status ${item.title}${item.description.isNotEmpty ? ' - ${item.description}' : ''}');
+        buffer.writeln(
+          '$status ${item.title}${item.description.isNotEmpty ? ' - ${item.description}' : ''}',
+        );
       }
       buffer.writeln('');
     });
-    
+
     return buffer.toString();
   }
 }
