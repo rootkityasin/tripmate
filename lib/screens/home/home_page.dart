@@ -486,8 +486,8 @@ class _TripHomePageState extends State<TripHomePage> {
                       _buildRecentTripsPromotionalCards(),
                       const SizedBox(height: 24),
 
-                      // Recent trips section
-                      _buildRecentTripsSection(),
+                      // Travel journals section
+                      _buildTravelJournalsSection(),
                     ],
                   ),
                 ),
@@ -829,14 +829,14 @@ class _TripHomePageState extends State<TripHomePage> {
     );
   }
 
-  Widget _buildRecentTripsSection() {
+  Widget _buildTravelJournalsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Text(
-              'Your Recent Trips',
+              'Your Travel Journals',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -845,15 +845,20 @@ class _TripHomePageState extends State<TripHomePage> {
             ),
             const Spacer(),
             GestureDetector(
-              onTap: _startNewTrip,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const JournalScreen()),
+                );
+              },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF007AFF),
+                  color: const Color(0xFF34C759),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  'Add New',
+                  'View All',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -865,211 +870,186 @@ class _TripHomePageState extends State<TripHomePage> {
           ],
         ),
         const SizedBox(height: 16),
-        if (_recentTrips.isEmpty)
-          _buildEmptyTripsCard()
+        if (_recentJournals.isEmpty)
+          _buildEmptyJournalsCard()
         else
-          ..._recentTrips.map((trip) => Container(
+          ..._recentJournals.take(5).map((journal) => Container(
             margin: const EdgeInsets.only(bottom: 12),
-            child: _buildTripCard(trip),
+            child: _buildJournalCard(journal),
           )),
       ],
     );
   }
 
-  Widget _buildTripCard(TripDetails trip) {
-    final journalEntries = _journalService.getEntriesForTrip(trip.id);
-    final hasJournalEntries = journalEntries.isNotEmpty;
+  Widget _buildJournalCard(JournalEntry journal) {
+    // Find the trip for this journal entry
+    final trip = _recentTrips.firstWhere(
+      (t) => t.id == journal.tripId,
+      orElse: () => TripDetails(
+        id: '',
+        destinationName: 'Unknown Destination',
+        description: '',
+        region: 'Unknown Region',
+        latitude: 0,
+        longitude: 0,
+        createdAt: DateTime.now(),
+        attractions: [],
+      ),
+    );
     
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: AppStyles.modernCardDecoration(borderRadius: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: AppStyles.modernButtonDecoration(borderRadius: 16),
-                child: Icon(
-                  Icons.location_on_rounded,
-                  color: Colors.white,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      trip.destinationName,
-                      style: AppStyles.headingSmall.copyWith(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
+    return GestureDetector(
+      onTap: () => _openTripJournal(trip),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: AppStyles.modernCardDecoration(borderRadius: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF34C759), Color(0xFF30D158)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      trip.region,
-                      style: AppStyles.bodyMedium.copyWith(
-                        color: AppStyles.textSecondary,
-                      ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: Text(
+                      journal.mood,
+                      style: const TextStyle(fontSize: 24),
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: AppStyles.glassDecoration(
-                        color: trip.isCompleted ? Colors.green.withOpacity(0.1) 
-                              : trip.isActive ? Colors.orange.withOpacity(0.1)
-                              : AppStyles.primaryColor.withOpacity(0.1),
-                        borderRadius: 12,
-                      ),
-                      child: Text(
-                        trip.statusDisplay,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: trip.isCompleted ? Colors.green[700]
-                                : trip.isActive ? Colors.orange[700]
-                                : AppStyles.primaryColor,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                decoration: AppStyles.glassDecoration(
-                  borderRadius: 16,
-                  withBorder: false,
-                ),
-                child: IconButton(
-                  onPressed: () => _openTripJournal(trip),
-                  icon: Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: AppStyles.textSecondary,
-                    size: 20,
                   ),
                 ),
-              ),
-            ],
-          ),
-          
-          if (trip.startDate != null && trip.endDate != null) ...[
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        journal.title,
+                        style: AppStyles.headingSmall.copyWith(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        trip.destinationName,
+                        style: AppStyles.bodyMedium.copyWith(
+                          color: AppStyles.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: AppStyles.glassDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: 12,
+                        ),
+                        child: Text(
+                          _formatJournalDate(journal.timestamp),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.green[700],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  decoration: AppStyles.glassDecoration(
+                    borderRadius: 16,
+                    withBorder: false,
+                  ),
+                  child: IconButton(
+                    onPressed: () => _openTripJournal(trip),
+                    icon: Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      color: AppStyles.textSecondary,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            
             const SizedBox(height: 16),
+            
+            // Journal content preview
             Container(
               padding: const EdgeInsets.all(16),
               decoration: AppStyles.glassDecoration(
                 color: AppStyles.backgroundColor.withOpacity(0.5),
                 borderRadius: 12,
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.calendar_today_rounded,
-                    size: 16,
-                    color: AppStyles.primaryColor,
-                  ),
-                  const SizedBox(width: 8),
                   Text(
-                    '${trip.startDate!.day}/${trip.startDate!.month}/${trip.startDate!.year} - ${trip.endDate!.day}/${trip.endDate!.month}/${trip.endDate!.year}',
-                    style: AppStyles.bodySmall.copyWith(
-                      fontWeight: FontWeight.w600,
+                    journal.content,
+                    style: AppStyles.bodyMedium.copyWith(
                       color: AppStyles.textPrimary,
+                      height: 1.4,
                     ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const Spacer(),
-                  Text(
-                    trip.durationText,
-                    style: AppStyles.bodySmall.copyWith(
-                      color: AppStyles.textSecondary,
-                      fontWeight: FontWeight.w500,
+                  if (journal.photoPaths.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.photo_camera_rounded,
+                          size: 16,
+                          color: AppStyles.primaryColor,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${journal.photoPaths.length} photo${journal.photoPaths.length == 1 ? '' : 's'}',
+                          style: AppStyles.bodySmall.copyWith(
+                            color: AppStyles.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
           ],
-          
-          const SizedBox(height: 16),
-          
-          // Journal entries section
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: AppStyles.glassDecoration(
-              color: hasJournalEntries 
-                ? Colors.green.withOpacity(0.1) 
-                : Colors.orange.withOpacity(0.1),
-              borderRadius: 12,
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  hasJournalEntries ? Icons.auto_stories_rounded : Icons.add_rounded,
-                  size: 20,
-                  color: hasJournalEntries ? Colors.green[700] : Colors.orange[700],
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        hasJournalEntries 
-                          ? '${journalEntries.length} Journal ${journalEntries.length == 1 ? 'Entry' : 'Entries'}'
-                          : 'No Journal Entries Yet',
-                        style: AppStyles.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: hasJournalEntries ? Colors.green[700] : Colors.orange[700],
-                        ),
-                      ),
-                      if (hasJournalEntries) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Latest: ${journalEntries.first.title}',
-                          style: AppStyles.bodySmall.copyWith(
-                            color: AppStyles.textSecondary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                Container(
-                  decoration: AppStyles.modernButtonDecoration(borderRadius: 12),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => _openTripJournal(trip),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Text(
-                          hasJournalEntries ? 'View' : 'Add',
-                          style: AppStyles.bodySmall.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildEmptyTripsCard() {
+  String _formatJournalDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+    
+    if (difference.inDays == 0) {
+      return 'Today';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} days ago';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+
+  Widget _buildEmptyJournalsCard() {
     return Container(
-      height: 300, // Fixed height to take up more space
+      height: 200,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1080,57 +1060,31 @@ class _TripHomePageState extends State<TripHomePage> {
         ),
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
-        crossAxisAlignment: CrossAxisAlignment.center, // Center content horizontally
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Icon(
-            Icons.luggage_rounded,
-            size: 64, // Larger icon
+            Icons.auto_stories_rounded,
+            size: 48,
             color: Colors.grey[400],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           Text(
-            'No trips yet',
+            'No journal entries yet',
             style: TextStyle(
-              fontSize: 18, // Larger font
+              fontSize: 16,
               fontWeight: FontWeight.w600,
               color: Colors.grey[700],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
-            'Start planning your first adventure!',
+            'Start writing about your adventures!',
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey[500],
             ),
             textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          GestureDetector(
-            onTap: _startNewTrip,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16), // Larger button
-              decoration: BoxDecoration(
-                gradient: AppStyles.primaryGradient,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppStyles.primaryColor.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Text(
-                'Plan First Trip',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ),
           ),
         ],
       ),

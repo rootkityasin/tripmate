@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../../services/map_tile_service.dart';
 import '../../constants/app_styles.dart';
 import '../../widgets/modern_date_picker.dart';
@@ -21,6 +23,9 @@ class _NewTripPageState extends State<NewTripPage> {
   String _selectedCategory = 'all'; // Track selected category filter
   DateTime? _startDate;
   DateTime? _endDate;
+  
+  // Track downloaded destinations with their dates
+  Map<String, Map<String, dynamic>> _downloadedDestinations = {};
 
   // Famous trip destinations in Bangladesh
   static final List<TripDestination> _bangladeshDestinations = [
@@ -142,6 +147,70 @@ class _NewTripPageState extends State<NewTripPage> {
   void initState() {
     super.initState();
     _filteredDestinations = _bangladeshDestinations;
+    _loadDownloadedDestinations();
+  }
+
+  // Load previously downloaded destinations from storage
+  Future<void> _loadDownloadedDestinations() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final downloadedData = prefs.getString('downloaded_destinations');
+      
+      if (downloadedData != null) {
+        final Map<String, dynamic> decodedData = json.decode(downloadedData);
+        setState(() {
+          _downloadedDestinations = decodedData.map((key, value) => MapEntry(
+            key,
+            {
+              'startDate': DateTime.parse(value['startDate']),
+              'endDate': DateTime.parse(value['endDate']),
+              'downloadedAt': DateTime.parse(value['downloadedAt']),
+            },
+          ));
+        });
+      }
+    } catch (e) {
+      print('Error loading downloaded destinations: $e');
+      setState(() {
+        _downloadedDestinations = {};
+      });
+    }
+  }
+
+  // Check if a destination is already downloaded
+  bool _isDestinationDownloaded(String destinationName) {
+    return _downloadedDestinations.containsKey(destinationName);
+  }
+
+  // Get download info for a destination
+  Map<String, dynamic>? _getDownloadInfo(String destinationName) {
+    return _downloadedDestinations[destinationName];
+  }
+
+  // Save downloaded destination info
+  Future<void> _saveDownloadedDestination(String destinationName, DateTime startDate, DateTime endDate) async {
+    setState(() {
+      _downloadedDestinations[destinationName] = {
+        'startDate': startDate,
+        'endDate': endDate,
+        'downloadedAt': DateTime.now(),
+      };
+    });
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final dataToSave = _downloadedDestinations.map((key, value) => MapEntry(
+        key,
+        {
+          'startDate': value['startDate'].toIso8601String(),
+          'endDate': value['endDate'].toIso8601String(),
+          'downloadedAt': value['downloadedAt'].toIso8601String(),
+        },
+      ));
+      await prefs.setString('downloaded_destinations', json.encode(dataToSave));
+    } catch (e) {
+      print('Error saving downloaded destination: $e');
+    }
   }
 
   @override
@@ -286,7 +355,96 @@ class _NewTripPageState extends State<NewTripPage> {
   }
 
   void _startTrip(TripDestination destination) async {
-    // Show date picker before proceeding
+    // Check if destination is already downloaded
+    if (_isDestinationDownloaded(destination.name)) {
+      final downloadInfo = _getDownloadInfo(destination.name)!;
+      final existingStartDate = downloadInfo['startDate'] as DateTime;
+      final existingEndDate = downloadInfo['endDate'] as DateTime;
+      
+      // Show confirmation dialog for already downloaded destination
+      final shouldUseExisting = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(Icons.download_done_rounded, color: AppStyles.primaryColor),
+              const SizedBox(width: 8),
+              const Text('Maps Ready!'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${destination.name} maps are already downloaded.'),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppStyles.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Previous trip dates:',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${_formatDate(existingStartDate)} - ${_formatDate(existingEndDate)}',
+                      style: TextStyle(color: AppStyles.primaryColor),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Would you like to use the existing download or pick new dates?'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Pick New Dates'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppStyles.primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Use Existing'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldUseExisting == true) {
+        // Use existing download with previous dates
+        final tripWithDates = {
+          'destination': destination,
+          'startDate': existingStartDate,
+          'endDate': existingEndDate,
+          'isAlreadyDownloaded': true,
+        };
+        
+        if (mounted) {
+          Navigator.pop(context, tripWithDates);
+        }
+        return;
+      } else if (shouldUseExisting == false) {
+        // User wants to pick new dates, continue with date picker
+        // Fall through to date picker logic
+      } else {
+        // User cancelled
+        return;
+      }
+    }
+
+    // Show date picker for new trip or when user wants new dates
     showDialog(
       context: context,
       builder: (context) => ModernDatePicker(
@@ -301,11 +459,15 @@ class _NewTripPageState extends State<NewTripPage> {
           // Start download animation immediately after date selection
           await _downloadDestinationMaps(destination);
           
+          // Save the downloaded destination info
+          await _saveDownloadedDestination(destination.name, startDate, endDate);
+          
           // After download completes, create trip with dates and destination
           final tripWithDates = {
             'destination': destination,
             'startDate': startDate,
             'endDate': endDate,
+            'isAlreadyDownloaded': false,
           };
           
           // Return to previous page with trip data
@@ -315,6 +477,23 @@ class _NewTripPageState extends State<NewTripPage> {
         },
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  // Clear downloaded destinations (for testing or reset purposes)
+  Future<void> _clearDownloadedDestinations() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('downloaded_destinations');
+      setState(() {
+        _downloadedDestinations = {};
+      });
+    } catch (e) {
+      print('Error clearing downloaded destinations: $e');
+    }
   }
 
   @override
@@ -471,8 +650,9 @@ class _NewTripPageState extends State<NewTripPage> {
                     itemCount: _filteredDestinations.length,
                     itemBuilder: (context, index) {
                       final destination = _filteredDestinations[index];
-                      final isDownloading =
-                          _downloadingDestination == destination.name;
+                      final isDownloading = _downloadingDestination == destination.name;
+                      final isDownloaded = _isDestinationDownloaded(destination.name);
+                      final downloadInfo = isDownloaded ? _getDownloadInfo(destination.name) : null;
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12.0),
@@ -499,12 +679,52 @@ class _NewTripPageState extends State<NewTripPage> {
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text(
-                                            destination.name,
-                                            style: const TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                            ),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  destination.name,
+                                                  style: const TextStyle(
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                              if (isDownloaded)
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 4,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.green.withOpacity(0.1),
+                                                    borderRadius: BorderRadius.circular(12),
+                                                    border: Border.all(
+                                                      color: Colors.green,
+                                                      width: 1,
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Icon(
+                                                        Icons.download_done_rounded,
+                                                        color: Colors.green,
+                                                        size: 14,
+                                                      ),
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        'Downloaded',
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          color: Colors.green,
+                                                          fontWeight: FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                            ],
                                           ),
                                           Text(
                                             destination.region,
@@ -527,6 +747,37 @@ class _NewTripPageState extends State<NewTripPage> {
                                     color: Colors.grey,
                                   ),
                                 ),
+                                
+                                // Show previous trip dates if downloaded
+                                if (isDownloaded && downloadInfo != null) ...[
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppStyles.primaryColor.withOpacity(0.05),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.calendar_month_rounded,
+                                          color: AppStyles.primaryColor,
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'Previous trip: ${_formatDate(downloadInfo['startDate'])} - ${_formatDate(downloadInfo['endDate'])}',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: AppStyles.primaryColor,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                                
                                 const SizedBox(height: 12),
                                 const Text(
                                   'Popular Attractions:',

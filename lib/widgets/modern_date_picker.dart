@@ -247,7 +247,7 @@ class _ModernDatePickerState extends State<ModernDatePicker>
 
   Widget _buildDateDisplay() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(14), // Reduced from 16 to 14
       child: Row(
         children: [
           Expanded(
@@ -259,9 +259,9 @@ class _ModernDatePickerState extends State<ModernDatePicker>
             ),
           ),
           Container(
-            width: 40,
+            width: 28, // Reduced from 30 to 28
             height: 2,
-            margin: const EdgeInsets.symmetric(horizontal: 12),
+            margin: const EdgeInsets.symmetric(horizontal: 6), // Reduced from 8 to 6
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -287,7 +287,7 @@ class _ModernDatePickerState extends State<ModernDatePicker>
 
   Widget _buildDateCard(String label, DateTime? date, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(10), // Reduced from 12 to 10
       decoration: BoxDecoration(
         color: date != null ? color.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
         borderRadius: BorderRadius.circular(16),
@@ -297,33 +297,38 @@ class _ModernDatePickerState extends State<ModernDatePicker>
         ),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min, // Added to minimize space
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.center, // Center the content
             children: [
               Icon(
                 icon,
-                size: 16,
+                size: 13, // Reduced from 14 to 13
                 color: date != null ? color : Colors.grey,
               ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: date != null ? color : Colors.grey,
-                  letterSpacing: 0.5,
+              const SizedBox(width: 3), // Reduced from 4 to 3
+              Flexible( // Added Flexible to prevent overflow
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10, // Reduced from 11 to 10
+                    fontWeight: FontWeight.w600,
+                    color: date != null ? color : Colors.grey,
+                    letterSpacing: 0.2, // Reduced from 0.3 to 0.2
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 5), // Reduced from 6 to 5
           Text(
             date != null
                 ? '${date.day}'
                 : '-',
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 21, // Reduced from 22 to 21
               fontWeight: FontWeight.bold,
               color: date != null ? color : Colors.grey,
             ),
@@ -333,7 +338,7 @@ class _ModernDatePickerState extends State<ModernDatePicker>
                 ? _getMonthName(date.month)
                 : 'Select',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 12, // Reduced from 13 to 12
               color: date != null ? color : Colors.grey,
             ),
           ),
@@ -352,7 +357,7 @@ class _ModernDatePickerState extends State<ModernDatePicker>
 
   Widget _buildCalendar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16), // Reduced from 20 to 16
       child: Column(
         children: [
           _buildMonthHeader(),
@@ -495,7 +500,7 @@ class _ModernDatePickerState extends State<ModernDatePicker>
 
   Widget _buildActionButtons() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16), // Reduced from 20 to 16
       child: Row(
         children: [
           Expanded(
@@ -530,10 +535,14 @@ class _ModernDatePickerState extends State<ModernDatePicker>
                   ? () async {
                       HapticFeedback.mediumImpact();
                       
-                      // Animate out before calling the callback
+                      // Animate out before calling the callback and closing
                       await _slideController.reverse();
                       
                       if (mounted) {
+                        // Close the dialog first
+                        Navigator.of(context).pop();
+                        
+                        // Then call the callback
                         widget.onDateRangeSelected(_startDate!, _endDate!);
                       }
                     }
