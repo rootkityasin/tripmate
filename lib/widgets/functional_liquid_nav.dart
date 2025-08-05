@@ -62,11 +62,14 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> with TickerProvid
     ).animate(CurvedAnimation(parent: _floatController, curve: Curves.easeInOut));
 
     _scaleAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.1,
-    ).animate(CurvedAnimation(parent: _liquidController, curve: Curves.elasticOut));
+      begin: 0.95,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _liquidController, curve: Curves.easeOutBack));
 
     _floatController.repeat(reverse: true);
+
+    // Initialize with current state
+    _liquidController.forward();
   }
 
   @override
@@ -81,8 +84,10 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> with TickerProvid
   void didUpdateWidget(LiquidGlassNavBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.currentIndex != widget.currentIndex) {
-      _liquidController.forward(from: 0);
-      _glowController.forward(from: 0);
+      _liquidController.reset();
+      _liquidController.forward();
+      _glowController.reset();
+      _glowController.forward();
     }
   }
 
@@ -92,15 +97,15 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> with TickerProvid
       animation: _floatAnimation,
       builder: (context, child) {
         return Transform.translate(
-          offset: Offset(0, -2 * _floatAnimation.value),
+          offset: Offset(0, -1 * _floatAnimation.value),
           child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(32),
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
                 child: Container(
-                  height: 75,
+                  height: 65,
                   decoration: BoxDecoration(
                     // Glass effect with TripMate colors - highly visible
                     gradient: LinearGradient(
@@ -173,7 +178,7 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> with TickerProvid
                                   scale: _scaleAnimation.value,
                                   child: Container(
                                     width: _calculateBlobWidth(),
-                                    height: 63,
+                                    height: 53,
                                     decoration: BoxDecoration(
                                       // Vibrant teal gradient
                                       gradient: LinearGradient(
@@ -211,14 +216,14 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> with TickerProvid
                                           Icon(
                                             widget.items[widget.currentIndex].icon,
                                             color: surfaceColor, // White icon
-                                            size: 24,
+                                            size: 22,
                                           ),
                                           const SizedBox(width: 10),
                                           Text(
                                             widget.items[widget.currentIndex].label,
                                             style: TextStyle(
                                               color: surfaceColor, // White text
-                                              fontSize: 15,
+                                              fontSize: 14,
                                               fontWeight: FontWeight.w700,
                                               letterSpacing: 0.5,
                                               shadows: [
@@ -243,7 +248,7 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> with TickerProvid
 
                       // Interactive navigation items (always on top)
                       SizedBox(
-                        height: 75,
+                        height: 65,
                         child: Row(
                           children: widget.items.asMap().entries.map((entry) {
                             final index = entry.key;
@@ -260,7 +265,7 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> with TickerProvid
                                     widget.onTap(index);
                                   },
                                   child: SizedBox(
-                                    height: 75,
+                                    height: 65,
                                     child: AnimatedOpacity(
                                       duration: const Duration(milliseconds: 300),
                                       opacity: isSelected ? 0.0 : 1.0, // Hide when selected
@@ -270,7 +275,7 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> with TickerProvid
                                           color: primaryColor.withOpacity(
                                             0.8,
                                           ), // Dark visible icons
-                                          size: 26,
+                                          size: 24,
                                         ),
                                       ),
                                     ),
