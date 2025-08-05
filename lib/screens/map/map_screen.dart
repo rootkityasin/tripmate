@@ -17,11 +17,29 @@ class _MapScreenState extends State<MapScreen> {
   final List<UserLocation> _userLocations = [];
   UserLocation? _currentUserLocation;
   bool _isLoading = true;
+  bool _isLocationTracking = false;
+  bool _isOfflineMode = false;
 
   @override
   void initState() {
     super.initState();
     _getCurrentLocation();
+    _startLocationTracking();
+    _checkOfflineStatus();
+  }
+
+  @override
+  void dispose() {
+    _locationService.stopLocationTracking();
+    super.dispose();
+  }
+
+  void _checkOfflineStatus() {
+    // Check if device is offline
+    // For now, we'll assume offline mode based on GPS vs network availability
+    setState(() {
+      _isOfflineMode = true; // GPS works offline, maps may be cached
+    });
   }
 
   Future<void> _getCurrentLocation() async {
@@ -29,7 +47,8 @@ class _MapScreenState extends State<MapScreen> {
     if (location != null) {
       setState(() {
         _currentUserLocation = location;
-        _userLocations.add(location);
+        // Add or update current user in the list
+        _updateUserInList(location);
         _isLoading = false;
       });
     } else {
@@ -37,6 +56,22 @@ class _MapScreenState extends State<MapScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  void _startLocationTracking() {
+    _locationService.startLocationTracking((UserLocation newLocation) {
+      setState(() {
+        _currentUserLocation = newLocation;
+        _updateUserInList(newLocation);
+        _isLocationTracking = true;
+      });
+    });
+  }
+
+  void _updateUserInList(UserLocation newLocation) {
+    // Remove old location for current user and add new one
+    _userLocations.removeWhere((loc) => loc.userId == newLocation.userId);
+    _userLocations.add(newLocation);
   }
 
   double _calculateDistance(UserLocation location) {
@@ -189,7 +224,11 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'View locations and plan your journey',
+                        _currentUserLocation != null
+                            ? (_isOfflineMode 
+                                ? 'GPS tracking (Offline mode)'
+                                : 'GPS tracking (Online mode)')
+                            : 'Getting GPS location...',
                         style: AppStyles.bodyMedium.copyWith(
                           color: Colors.white.withOpacity(0.9),
                         ),
@@ -197,19 +236,35 @@ class _MapScreenState extends State<MapScreen> {
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: AppStyles.glassDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: 16,
-                    withBorder: false,
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: AppStyles.glassDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: 16,
+                      withBorder: false,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _isLocationTracking ? Icons.gps_fixed : Icons.gps_not_fixed,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        if (_isLocationTracking) ...[
+                          const SizedBox(width: 4),
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: _isOfflineMode ? Colors.orange : Colors.greenAccent,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.my_location_rounded,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
               ],
             ),
           ),
@@ -259,6 +314,16 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ],
       ),
+      floatingActionButton: _currentUserLocation != null
+          ? FloatingActionButton(
+              onPressed: () {
+                // Refresh current location
+                _getCurrentLocation();
+              },
+              backgroundColor: AppStyles.primaryColor,
+              child: const Icon(Icons.my_location, color: Colors.white),
+            )
+          : null,
     );
   }
 }

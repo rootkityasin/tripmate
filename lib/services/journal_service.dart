@@ -157,7 +157,7 @@ class JournalService {
     
     for (final entry in entries.reversed) { // Chronological order for export
       buffer.writeln('=' * 50);
-      buffer.writeln('${entry.title}');
+      buffer.writeln(entry.title);
       buffer.writeln('Date: ${_formatDateTime(entry.timestamp)}');
       buffer.writeln('Mood: ${entry.mood}');
       if (entry.locationName != null) {

@@ -23,7 +23,7 @@ class _ModernDatePickerState extends State<ModernDatePicker>
   DateTime? _startDate;
   DateTime? _endDate;
   DateTime _currentMonth = DateTime.now();
-  PageController _pageController = PageController();
+  final PageController _pageController = PageController();
   late AnimationController _slideController;
   late AnimationController _fadeController;
   late Animation<Offset> _slideAnimation;
@@ -427,7 +427,7 @@ class _ModernDatePickerState extends State<ModernDatePicker>
 
   Widget _buildCalendarGrid() {
     final days = _getDaysInMonth(_currentMonth);
-    return Container(
+    return SizedBox(
       height: 240,
       child: GridView.builder(
         physics: const NeverScrollableScrollPhysics(),

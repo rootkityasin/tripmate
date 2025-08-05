@@ -341,7 +341,7 @@ class _JournalPageState extends State<JournalPage> {
           ),
           const SizedBox(height: 16),
           // Glass mood filter chips
-          Container(
+          SizedBox(
             height: 55,
             child: ListView(
               scrollDirection: Axis.horizontal,
@@ -758,7 +758,7 @@ class _AddEditJournalEntryPageState extends State<AddEditJournalEntryPage> {
   final JournalService _journalService = JournalService();
   
   String _selectedMood = '😊';
-  List<File> _selectedImages = [];
+  final List<File> _selectedImages = [];
   bool _isLoading = false;
 
   final List<String> _moodOptions = [

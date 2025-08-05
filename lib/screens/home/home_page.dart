@@ -14,6 +14,7 @@ import '../../services/location_service.dart';
 import '../../services/bluetooth_sync.dart';
 import '../../services/trip_service.dart';
 import '../../constants/app_styles.dart';
+import '../../widgets/animated_navigation_bar.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -63,9 +64,7 @@ class _HomePageState extends State<HomePage> {
           _currentUserLocation = location;
 
           // Update or add location in the list
-          final existingIndex = _userLocations.indexWhere(
-            (l) => l.userId == location.userId,
-          );
+          final existingIndex = _userLocations.indexWhere((l) => l.userId == location.userId);
           if (existingIndex != -1) {
             _userLocations[existingIndex] = location;
           } else {
@@ -81,29 +80,22 @@ class _HomePageState extends State<HomePage> {
 
   void _startBluetoothSync() async {
     // Start periodic scanning for nearby users
-    _bluetoothSyncTimer = Timer.periodic(const Duration(seconds: 30), (
-      timer,
-    ) async {
+    _bluetoothSyncTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
       if (!mounted) {
         timer.cancel();
         return;
       }
 
       try {
-        final nearbyLocations = await _bluetoothService
-            .scanForNearbyLocations();
+        final nearbyLocations = await _bluetoothService.scanForNearbyLocations();
         if (nearbyLocations.isNotEmpty && mounted) {
           setState(() {
             // Add nearby locations (avoid duplicates and merge recent data)
             for (var location in nearbyLocations) {
-              final existingIndex = _userLocations.indexWhere(
-                (l) => l.userId == location.userId,
-              );
+              final existingIndex = _userLocations.indexWhere((l) => l.userId == location.userId);
               if (existingIndex != -1) {
                 // Update existing location if this one is more recent
-                if (location.timestamp.isAfter(
-                  _userLocations[existingIndex].timestamp,
-                )) {
+                if (location.timestamp.isAfter(_userLocations[existingIndex].timestamp)) {
                   _userLocations[existingIndex] = location;
                 }
               } else {
@@ -134,50 +126,24 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _pages[_selectedIndex],
-      bottomNavigationBar: Container(
-        decoration: AppStyles.modernCardDecoration(
-          borderRadius: 0,
-          backgroundColor: AppStyles.surfaceColor,
-        ),
-        child: SafeArea(
-          child: Container(
-            height: 80,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: BottomNavigationBar(
-              type: BottomNavigationBarType.fixed,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              items: const <BottomNavigationBarItem>[
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.home_rounded),
-                  label: 'Home',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.map_rounded),
-                  label: 'Map',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.auto_stories_rounded),
-                  label: 'Journal',
-                ),
-              ],
-              currentIndex: _selectedIndex,
-              selectedItemColor: AppStyles.primaryColor,
-              unselectedItemColor: AppStyles.textSecondary,
-              selectedLabelStyle: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-                color: AppStyles.primaryColor,
-              ),
-              unselectedLabelStyle: TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 12,
-                color: AppStyles.textSecondary,
-              ),
-              onTap: _onItemTapped,
-            ),
+      extendBody: true,
+      bottomNavigationBar: FloatingAnimatedNavBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        items: [
+          NavigationItem(
+            icon: Icons.home_rounded,
+            label: 'Home',
           ),
-        ),
+          NavigationItem(
+            icon: Icons.map_rounded,
+            label: 'Map',
+          ),
+          NavigationItem(
+            icon: Icons.auto_stories_rounded,
+            label: 'Journal',
+          ),
+        ],
       ),
     );
   }
@@ -289,7 +255,7 @@ class _TripHomePageState extends State<TripHomePage> {
     for (final trip in sampleTrips) {
       await _tripService.addTrip(trip);
     }
-    
+
     // Reload trips after adding samples
     _recentTrips = _tripService.getRecentTrips(limit: 5);
   }
@@ -337,7 +303,7 @@ class _TripHomePageState extends State<TripHomePage> {
     for (final journal in sampleJournals) {
       await _journalService.addEntry(journal);
     }
-    
+
     // Reload journals after adding samples
     _recentJournals = _journalService.getAllEntries()
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
@@ -354,7 +320,7 @@ class _TripHomePageState extends State<TripHomePage> {
       final destination = result['destination'] as TripDestination;
       final startDate = result['startDate'] as DateTime;
       final endDate = result['endDate'] as DateTime;
-      
+
       // Create new trip from selected destination with dates
       final newTrip = TripDetails(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -417,10 +383,7 @@ class _TripHomePageState extends State<TripHomePage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => JournalPage(
-          tripId: trip.id,
-          tripName: trip.destinationName,
-        ),
+        builder: (context) => JournalPage(tripId: trip.id, tripName: trip.destinationName),
       ),
     );
   }
@@ -428,9 +391,7 @@ class _TripHomePageState extends State<TripHomePage> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFFF8F9FA),
-      ),
+      decoration: const BoxDecoration(color: Color(0xFFF8F9FA)),
       child: SafeArea(
         child: _isLoading
             ? Center(
@@ -458,9 +419,7 @@ class _TripHomePageState extends State<TripHomePage> {
                       const SizedBox(height: 24),
                       Text(
                         'Loading your trips...',
-                        style: AppStyles.bodyLarge.copyWith(
-                          color: AppStyles.textSecondary,
-                        ),
+                        style: AppStyles.bodyLarge.copyWith(color: AppStyles.textSecondary),
                       ),
                     ],
                   ),
@@ -512,11 +471,7 @@ class _TripHomePageState extends State<TripHomePage> {
               ),
             ],
           ),
-          child: Icon(
-            Icons.menu_rounded,
-            color: Colors.black87,
-            size: 20,
-          ),
+          child: Icon(Icons.menu_rounded, color: Colors.black87, size: 20),
         ),
         const SizedBox(width: 16),
         Column(
@@ -524,11 +479,7 @@ class _TripHomePageState extends State<TripHomePage> {
           children: [
             Text(
               'Hello, Alexius',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87),
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -538,11 +489,7 @@ class _TripHomePageState extends State<TripHomePage> {
               ),
               child: Text(
                 '2 active',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
-                ),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white),
               ),
             ),
           ],
@@ -561,11 +508,7 @@ class _TripHomePageState extends State<TripHomePage> {
               ),
             ],
           ),
-          child: Icon(
-            Icons.notifications_outlined,
-            color: Colors.black87,
-            size: 20,
-          ),
+          child: Icon(Icons.notifications_outlined, color: Colors.black87, size: 20),
         ),
       ],
     );
@@ -591,7 +534,7 @@ class _TripHomePageState extends State<TripHomePage> {
   Widget _buildRecentTripsPromotionalCards() {
     // Combine trips and journals for the rotating cards
     final allItems = <Map<String, dynamic>>[];
-    
+
     // Add recent trips
     for (final trip in _recentTrips.take(3)) {
       allItems.add({
@@ -603,7 +546,7 @@ class _TripHomePageState extends State<TripHomePage> {
         'color': const Color(0xFF007AFF),
       });
     }
-    
+
     // Add recent journals
     for (final journal in _recentJournals.take(3)) {
       allItems.add({
@@ -611,22 +554,19 @@ class _TripHomePageState extends State<TripHomePage> {
         'data': journal,
         'title': journal.title,
         'subtitle': 'Journal Entry',
-        'description': journal.content.length > 50 
-            ? '${journal.content.substring(0, 50)}...' 
+        'description': journal.content.length > 50
+            ? '${journal.content.substring(0, 50)}...'
             : journal.content,
         'color': const Color(0xFF34C759),
       });
     }
-    
+
     if (allItems.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [
-              Color(0xFFFF6B35),
-              Color(0xFFFF8E53),
-            ],
+            colors: [Color(0xFFFF6B35), Color(0xFFFF8E53)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -652,7 +592,7 @@ class _TripHomePageState extends State<TripHomePage> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      'START YOUR',
+                      'START',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
@@ -692,22 +632,18 @@ class _TripHomePageState extends State<TripHomePage> {
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(
-                  Icons.add_rounded,
-                  color: Colors.white,
-                  size: 40,
-                ),
+                child: Icon(Icons.add_rounded, color: Colors.white, size: 40),
               ),
             ),
           ],
         ),
       );
     }
-    
+
     // Show rotating cards
     return Column(
       children: [
-        Container(
+        SizedBox(
           height: 160,
           child: PageView.builder(
             itemCount: allItems.length,
@@ -723,10 +659,7 @@ class _TripHomePageState extends State<TripHomePage> {
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [
-                      item['color'] as Color,
-                      (item['color'] as Color).withOpacity(0.8),
-                    ],
+                    colors: [item['color'] as Color, (item['color'] as Color).withOpacity(0.8)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -816,8 +749,8 @@ class _TripHomePageState extends State<TripHomePage> {
                 width: 8,
                 height: 8,
                 decoration: BoxDecoration(
-                  color: _currentCardIndex == index 
-                      ? const Color(0xFF007AFF) 
+                  color: _currentCardIndex == index
+                      ? const Color(0xFF007AFF)
                       : Colors.grey.withOpacity(0.3),
                   shape: BoxShape.circle,
                 ),
@@ -837,11 +770,7 @@ class _TripHomePageState extends State<TripHomePage> {
           children: [
             Text(
               'Your Travel Journals',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Colors.black87,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.black87),
             ),
             const Spacer(),
             GestureDetector(
@@ -859,11 +788,7 @@ class _TripHomePageState extends State<TripHomePage> {
                 ),
                 child: Text(
                   'View All',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
                 ),
               ),
             ),
@@ -873,10 +798,14 @@ class _TripHomePageState extends State<TripHomePage> {
         if (_recentJournals.isEmpty)
           _buildEmptyJournalsCard()
         else
-          ..._recentJournals.take(5).map((journal) => Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: _buildJournalCard(journal),
-          )),
+          ..._recentJournals
+              .take(5)
+              .map(
+                (journal) => Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: _buildJournalCard(journal),
+                ),
+              ),
       ],
     );
   }
@@ -896,7 +825,7 @@ class _TripHomePageState extends State<TripHomePage> {
         attractions: [],
       ),
     );
-    
+
     return GestureDetector(
       onTap: () => _openTripJournal(trip),
       child: Container(
@@ -918,12 +847,7 @@ class _TripHomePageState extends State<TripHomePage> {
                     ),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Center(
-                    child: Text(
-                      journal.mood,
-                      style: const TextStyle(fontSize: 24),
-                    ),
-                  ),
+                  child: Center(child: Text(journal.mood, style: const TextStyle(fontSize: 24))),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -942,9 +866,7 @@ class _TripHomePageState extends State<TripHomePage> {
                       const SizedBox(height: 4),
                       Text(
                         trip.destinationName,
-                        style: AppStyles.bodyMedium.copyWith(
-                          color: AppStyles.textSecondary,
-                        ),
+                        style: AppStyles.bodyMedium.copyWith(color: AppStyles.textSecondary),
                       ),
                       const SizedBox(height: 8),
                       Container(
@@ -966,10 +888,7 @@ class _TripHomePageState extends State<TripHomePage> {
                   ),
                 ),
                 Container(
-                  decoration: AppStyles.glassDecoration(
-                    borderRadius: 16,
-                    withBorder: false,
-                  ),
+                  decoration: AppStyles.glassDecoration(borderRadius: 16, withBorder: false),
                   child: IconButton(
                     onPressed: () => _openTripJournal(trip),
                     icon: Icon(
@@ -981,9 +900,9 @@ class _TripHomePageState extends State<TripHomePage> {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Journal content preview
             Container(
               padding: const EdgeInsets.all(16),
@@ -996,10 +915,7 @@ class _TripHomePageState extends State<TripHomePage> {
                 children: [
                   Text(
                     journal.content,
-                    style: AppStyles.bodyMedium.copyWith(
-                      color: AppStyles.textPrimary,
-                      height: 1.4,
-                    ),
+                    style: AppStyles.bodyMedium.copyWith(color: AppStyles.textPrimary, height: 1.4),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1007,11 +923,7 @@ class _TripHomePageState extends State<TripHomePage> {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Icon(
-                          Icons.photo_camera_rounded,
-                          size: 16,
-                          color: AppStyles.primaryColor,
-                        ),
+                        Icon(Icons.photo_camera_rounded, size: 16, color: AppStyles.primaryColor),
                         const SizedBox(width: 8),
                         Text(
                           '${journal.photoPaths.length} photo${journal.photoPaths.length == 1 ? '' : 's'}',
@@ -1035,7 +947,7 @@ class _TripHomePageState extends State<TripHomePage> {
   String _formatJournalDate(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
-    
+
     if (difference.inDays == 0) {
       return 'Today';
     } else if (difference.inDays == 1) {
@@ -1054,36 +966,22 @@ class _TripHomePageState extends State<TripHomePage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.grey.withOpacity(0.2),
-          style: BorderStyle.solid,
-        ),
+        border: Border.all(color: Colors.grey.withOpacity(0.2), style: BorderStyle.solid),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(
-            Icons.auto_stories_rounded,
-            size: 48,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.auto_stories_rounded, size: 48, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             'No journal entries yet',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[700],
-            ),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey[700]),
           ),
           const SizedBox(height: 8),
           Text(
             'Start writing about your adventures!',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
             textAlign: TextAlign.center,
           ),
         ],

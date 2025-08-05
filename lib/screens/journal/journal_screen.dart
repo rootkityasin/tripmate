@@ -474,7 +474,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
       future: _getJournalStats(tripId),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
-          return Container(
+          return SizedBox(
             height: 60,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -536,7 +536,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
           ] else ...[
             if (icon != null) ...[
               isLoading 
-                ? Container(
+                ? SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(

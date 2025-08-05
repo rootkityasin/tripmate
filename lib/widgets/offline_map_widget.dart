@@ -60,27 +60,74 @@ class _OfflineMapWidgetState extends State<OfflineMapWidget> {
 
   // Create different colored markers for different users
   Widget _buildUserMarker(UserLocation location, bool isCurrentUser) {
-    final color = isCurrentUser ? Colors.blue : Colors.red;
-    final icon = isCurrentUser ? Icons.my_location : Icons.person_pin_circle;
-
-    return GestureDetector(
-      onTap: () => widget.onUserMarkerTap?.call(location),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: color, width: 3),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
+    if (isCurrentUser) {
+      // Special marker for current user with pulsing animation
+      return GestureDetector(
+        onTap: () => widget.onUserMarkerTap?.call(location),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Outer pulsing circle
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.3),
+                shape: BoxShape.circle,
+              ),
+            ),
+            // Inner circle
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.blue, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.my_location,
+                color: Colors.blue,
+                size: 24,
+              ),
             ),
           ],
         ),
-        child: Icon(icon, color: color, size: 30),
-      ),
-    );
+      );
+    } else {
+      // Regular marker for other users
+      return GestureDetector(
+        onTap: () => widget.onUserMarkerTap?.call(location),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.red, width: 3),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 6,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.person_pin_circle,
+            color: Colors.red,
+            size: 24,
+          ),
+        ),
+      );
+    }
   }
 
   // Create cluster marker for nearby users
