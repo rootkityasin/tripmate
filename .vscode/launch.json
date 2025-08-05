@@ -2,40 +2,10 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "TripMate Android Emulator",
+      "name": "Flutter Debug",
       "type": "dart",
       "request": "launch",
-      "program": "lib/main.dart",
-      "flutterMode": "debug"
-    },
-    {
-      "name": "TripMate (Debug)",
-      "type": "dart",
-      "request": "launch",
-      "program": "lib/main.dart",
-      "flutterMode": "debug"
-    },
-    {
-      "name": "TripMate (Profile)",
-      "type": "dart", 
-      "request": "launch",
-      "program": "lib/main.dart",
-      "flutterMode": "profile"
-    },
-    {
-      "name": "TripMate (Release)",
-      "type": "dart",
-      "request": "launch", 
-      "program": "lib/main.dart",
-      "flutterMode": "release"
-    },
-    {
-      "name": "TripMate iOS",
-      "type": "dart",
-      "request": "launch",
-      "program": "lib/main.dart",
-      "flutterMode": "debug",
-      "deviceId": "ios"
+      "program": "lib/main.dart"
     }
   ]
 }

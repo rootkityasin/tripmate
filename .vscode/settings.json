@@ -1,25 +1,7 @@
 {
   "dart.flutterHotReloadOnSave": "all",
-  "dart.hotReloadOnSave": "all", 
-  "dart.flutterHotRestartOnSave": "never",
-  "dart.automaticCommentSlashes": "all",
-  "dart.lineLength": 100,
-  "dart.showTodos": true,
-  "dart.previewFlutterUiGuides": true,
-  "dart.previewFlutterUiGuidesCustomTracking": true,
-  "dart.flutterOutline": true,
-  "dart.flutterStructuredErrors": true,
-  "files.associations": {
-    "*.dart": "dart"
-  },
   "[dart]": {
     "editor.formatOnSave": true,
-    "editor.formatOnType": true,
-    "editor.rulers": [100],
-    "editor.selectionHighlight": false,
-    "editor.suggest.snippetsPreventQuickSuggestions": false,
-    "editor.suggestSelection": "first",
-    "editor.tabCompletion": "onlySnippets",
-    "editor.wordBasedSuggestions": "off"
+    "editor.rulers": [100]
   }
 }

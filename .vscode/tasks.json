@@ -2,50 +2,18 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "Flutter Run Android",
+			"label": "Flutter Run",
 			"type": "shell",
 			"command": "flutter",
-			"args": [
-				"run",
-				"-d",
-				"android"
-			],
+			"args": ["run"],
 			"group": "build",
-			"isBackground": true,
-			"problemMatcher": []
+			"isBackground": true
 		},
 		{
-			"label": "Flutter Run iOS",
+			"label": "Flutter Clean",
 			"type": "shell",
 			"command": "flutter",
-			"args": [
-				"run",
-				"-d",
-				"ios"
-			],
-			"group": "build",
-			"isBackground": true,
-			"problemMatcher": []
-		},
-		{
-			"label": "Flutter Clean & Get",
-			"type": "shell",
-			"command": "flutter",
-			"args": [
-				"clean"
-			],
-			"group": "build",
-			"dependsOrder": "sequence",
-			"dependsOn": "Flutter Pub Get"
-		},
-		{
-			"label": "Flutter Pub Get",
-			"type": "shell",
-			"command": "flutter",
-			"args": [
-				"pub",
-				"get"
-			],
+			"args": ["clean"],
 			"group": "build"
 		}
 	]

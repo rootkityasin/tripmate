@@ -28,9 +28,7 @@ void main() {
     // Verify that navigation items exist
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('Journal'), findsOneWidget);
-    expect(find.text('Checklist'), findsOneWidget);
-    expect(find.text('Guide'), findsOneWidget);
-    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('Map'), findsOneWidget);
   });
 
   testWidgets('Navigation between tabs works', (WidgetTester tester) async {
@@ -45,12 +43,9 @@ void main() {
     // Verify Journal page loaded by checking for unique content
     expect(find.text('Document your travel memories'), findsOneWidget);
 
-    // Tap on Checklist tab
-    await tester.tap(find.text('Checklist'));
+    // Tap on Map tab
+    await tester.tap(find.text('Map'));
     await tester.pump();
-
-    // Verify Checklist page loaded by checking for unique content
-    expect(find.text('Never forget important items'), findsOneWidget);
 
     // Go back to Home tab
     await tester.tap(find.text('Home'));

@@ -5,7 +5,6 @@ import '../journal/journal_screen.dart';
 import '../journal/journal_page.dart';
 import '../map/map_screen.dart';
 import '../trip/new_trip_page.dart';
-import '../../services/checklist_service.dart';
 import '../../services/journal_service.dart';
 import '../../models/user_location.dart';
 import '../../models/trip_details.dart';
@@ -14,7 +13,7 @@ import '../../services/location_service.dart';
 import '../../services/bluetooth_sync.dart';
 import '../../services/trip_service.dart';
 import '../../constants/app_styles.dart';
-import '../../widgets/animated_navigation_bar.dart';
+import '../../widgets/functional_liquid_nav.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -127,22 +126,13 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       body: _pages[_selectedIndex],
       extendBody: true,
-      bottomNavigationBar: FloatingAnimatedNavBar(
+      bottomNavigationBar: LiquidGlassNavBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         items: [
-          NavigationItem(
-            icon: Icons.home_rounded,
-            label: 'Home',
-          ),
-          NavigationItem(
-            icon: Icons.map_rounded,
-            label: 'Map',
-          ),
-          NavigationItem(
-            icon: Icons.auto_stories_rounded,
-            label: 'Journal',
-          ),
+          NavigationItem(icon: Icons.home_rounded, label: 'Home'),
+          NavigationItem(icon: Icons.map_rounded, label: 'Map'),
+          NavigationItem(icon: Icons.auto_stories_rounded, label: 'Journal'),
         ],
       ),
     );
@@ -339,27 +329,6 @@ class _TripHomePageState extends State<TripHomePage> {
       // Save using TripService
       await _tripService.addTrip(newTrip);
 
-      // Create default checklist for the trip
-      final checklistService = ChecklistService();
-      await checklistService.initialize();
-
-      // Create Bangladesh-specific checklist if destination is in Bangladesh
-      if (destination.region.contains('Bangladesh') ||
-          [
-            'Bandarban',
-            'Cox\'s Bazar',
-            'Rangamati',
-            'Sylhet',
-            'Sundarbans',
-            'Paharpur',
-            'Dhaka',
-            'Chittagong',
-          ].contains(destination.name)) {
-        await checklistService.createDefaultBangladeshChecklist(newTrip.id);
-      } else {
-        await checklistService.createBasicChecklist(newTrip.id);
-      }
-
       // Create welcome journal entry
       final journalService = JournalService();
       await journalService.initialize();
@@ -371,7 +340,7 @@ class _TripHomePageState extends State<TripHomePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('New trip to ${destination.name} created with checklist and journal!'),
+            content: Text('New trip to ${destination.name} created with journal!'),
             backgroundColor: AppStyles.successColor,
           ),
         );
