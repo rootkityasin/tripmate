@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/user_location.dart';
 import 'package:uuid/uuid.dart';
@@ -24,12 +25,10 @@ class LocationService {
   Future<UserLocation?> getCurrentLocation() async {
     try {
       if (!await checkLocationService()) {
-        print('Location services are disabled.');
         return null;
       }
 
       if (!await requestLocationPermission()) {
-        print('Location permission denied');
         return null;
       }
 
@@ -44,7 +43,6 @@ class LocationService {
         timestamp: DateTime.now(),
       );
     } catch (e) {
-      print('Error getting current location: $e');
       return null;
     }
   }
@@ -85,6 +83,17 @@ class LocationService {
       location2.latitude,
       location2.longitude,
     );
+  }
+
+  Future<List<Placemark>> getPlacemarkFromCoordinates(
+    double latitude,
+    double longitude,
+  ) async {
+    try {
+      return await placemarkFromCoordinates(latitude, longitude);
+    } catch (e) {
+      return [];
+    }
   }
 
   List<UserLocation> filterNearbyUsers(

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import '../../models/trip_details.dart';
-import '../../constants/app_styles.dart';
-import 'journal_page.dart';
+import 'dart:io';
+import '../../services/journal_service.dart';
+import '../../models/journal_entry.dart';
+import 'new_journal_entry_page.dart';
 
 class JournalScreen extends StatefulWidget {
   const JournalScreen({super.key});
@@ -11,457 +11,130 @@ class JournalScreen extends StatefulWidget {
   State<JournalScreen> createState() => _JournalScreenState();
 }
 
-class _JournalScreenState extends State<JournalScreen> with TickerProviderStateMixin {
-  List<TripDetails> _userTrips = [];
+class _JournalScreenState extends State<JournalScreen> {
+  final JournalService _journalService = JournalService();
+  List<JournalEntry> _entries = [];
   bool _isLoading = true;
-  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _loadTrips();
+    _loadEntries();
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  Future<void> _loadEntries() async {
+    await _journalService.initialize();
+    final entries = _journalService.getAllEntries();
+    setState(() {
+      _entries = entries;
+      _isLoading = false;
+    });
   }
 
-  Future<void> _loadTrips() async {
-    try {
-      final tripBox = await Hive.openBox<TripDetails>('trip_details');
-      setState(() {
-        _userTrips = tripBox.values.toList()
-          ..sort((a, b) => (b.startDate ?? DateTime.now())
-              .compareTo(a.startDate ?? DateTime.now()));
-        _isLoading = false;
-      });
-    } catch (e) {
-      print('Error loading trips: $e');
-      setState(() {
-        _isLoading = false;
-      });
+  Future<void> _addNewEntry() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const NewJournalEntryPage()),
+    );
+
+    if (result == true) {
+      _loadEntries();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Travel Journals',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-        backgroundColor: AppStyles.primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppStyles.primaryColor, AppStyles.accentColor],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          indicatorColor: Colors.white,
-          indicatorWeight: 3,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400, fontSize: 16),
-          tabs: const [
-            Tab(
-              icon: Icon(Icons.folder_outlined, size: 24),
-              text: 'My Trips',
-              iconMargin: EdgeInsets.only(bottom: 4),
-            ),
-            Tab(
-              icon: Icon(Icons.timeline_outlined, size: 24),
-              text: 'All Entries',
-              iconMargin: EdgeInsets.only(bottom: 4),
-            ),
-          ],
-        ),
-      ),
-      body: _isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(AppStyles.primaryColor),
-                    strokeWidth: 3,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Loading journals...',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : TabBarView(
-              controller: _tabController,
+      backgroundColor: const Color(0xFF1C1C1E),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
               children: [
-                _buildTripsTab(),
-                _buildAllEntriesTab(),
-              ],
-            ),
-    );
-  }
-
-  Widget _buildTripsTab() {
-    if (_userTrips.isEmpty) {
-      return _buildEmptyState();
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.grey[50]!, Colors.white],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-      ),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(20),
-        itemCount: _userTrips.length,
-        itemBuilder: (context, index) {
-          final trip = _userTrips[index];
-          return AnimatedContainer(
-            duration: Duration(milliseconds: 200 + (index * 100)),
-            curve: Curves.easeOutBack,
-            child: _buildTripCard(trip),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildAllEntriesTab() {
-    return JournalPage(
-      showAllEntries: true,
-      tripId: null,
-      tripName: 'All Journals',
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.grey[50]!, Colors.white],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-      ),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: AppStyles.primaryColor.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.auto_stories_outlined,
-                  size: 64,
-                  color: AppStyles.primaryColor,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'No trips found',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.grey[800],
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Create your first trip to start journaling\nyour travel experiences and memories',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                  height: 1.5,
-                  fontWeight: FontWeight.w400,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 40),
-              Material(
-                elevation: 8,
-                shadowColor: AppStyles.primaryColor.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(30),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [AppStyles.primaryColor, AppStyles.accentColor],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).pushNamed('/new-trip');
-                    },
-                    icon: const Icon(Icons.add_rounded, size: 24),
-                    label: const Text(
-                      'Create New Trip',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      foregroundColor: Colors.white,
-                      shadowColor: Colors.transparent,
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTripCard(TripDetails trip) {
-    final DateTime startDate = trip.startDate ?? DateTime.now();
-    final DateTime endDate = trip.endDate ?? DateTime.now().add(const Duration(days: 1));
-    
-    final bool isUpcoming = startDate.isAfter(DateTime.now());
-    final bool isCurrent = DateTime.now().isAfter(startDate) && 
-                          DateTime.now().isBefore(endDate);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      child: Material(
-        elevation: 8,
-        shadowColor: Colors.black.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            gradient: LinearGradient(
-              colors: [Colors.white, Colors.grey[50]!],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) => JournalPage(
-                    tripId: trip.id,
-                    tripName: trip.destinationName,
-                    showAllEntries: false,
-                  ),
-                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                    return SlideTransition(
-                      position: animation.drive(
-                        Tween(begin: const Offset(1.0, 0.0), end: Offset.zero)
-                            .chain(CurveTween(curve: Curves.easeOutCubic)),
-                      ),
-                      child: child,
-                    );
-                  },
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(20),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      // Modern trip image with hero animation
-                      Hero(
-                        tag: 'trip_${trip.id}',
-                        child: Container(
-                          width: 70,
-                          height: 70,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            gradient: LinearGradient(
-                              colors: [AppStyles.primaryColor, AppStyles.accentColor],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppStyles.primaryColor.withOpacity(0.3),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.place_outlined,
-                            color: Colors.white,
-                            size: 32,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              trip.destinationName,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.calendar_today_outlined,
-                                  size: 16,
-                                  color: Colors.grey[600],
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '${_formatDate(startDate)} - ${_formatDate(endDate)}',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[600],
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              trip.description,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[500],
-                                height: 1.3,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                      _buildStatusChip(isUpcoming, isCurrent),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[200]!),
-                    ),
-                    child: _buildJournalPreview(trip.id),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
+                // Header
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Tap to view journal entries',
+                      const Text(
+                        'Journal',
                         style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[500],
-                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                          fontSize: 34,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.all(8),
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(
-                          color: AppStyles.primaryColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
+                          color: Colors.white.withOpacity(0.1),
+                          shape: BoxShape.circle,
                         ),
-                        child: Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 16,
-                          color: AppStyles.primaryColor,
+                        child: IconButton(
+                          onPressed: () {},
+                          icon: const Icon(
+                            Icons.more_horiz,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+
+                // Content
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                      bottom: 100,
+                    ), // Add padding for FAB
+                    child: _isLoading
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              color: Colors.orange,
+                            ),
+                          )
+                        : _entries.isEmpty
+                        ? _buildAppleEmptyState()
+                        : _buildJournalList(),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildStatusChip(bool isUpcoming, bool isCurrent) {
-    String label;
-    Color color;
-    IconData icon;
-
-    if (isCurrent) {
-      label = 'Ongoing';
-      color = Colors.green;
-      icon = Icons.play_circle_outline;
-    } else if (isUpcoming) {
-      label = 'Upcoming';
-      color = Colors.blue;
-      icon = Icons.schedule_outlined;
-    } else {
-      label = 'Completed';
-      color = Colors.grey;
-      icon = Icons.check_circle_outline;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3), width: 1.5),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: color,
-              letterSpacing: 0.3,
+          // Floating Action Button positioned above nav bar
+          Positioned(
+            bottom: 100, // Position above the navigation bar
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF007AFF), Color(0xFF5856D6)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  onPressed: _addNewEntry,
+                  icon: const Icon(Icons.add, color: Colors.white, size: 28),
+                ),
+              ),
             ),
           ),
         ],
@@ -469,134 +142,482 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
     );
   }
 
-  Widget _buildJournalPreview(String tripId) {
-    return FutureBuilder<Map<String, dynamic>>(
-      future: _getJournalStats(tripId),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return SizedBox(
-            height: 60,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildStatItem(Icons.book_outlined, '- entries', isLoading: true),
-                _buildStatItem(Icons.photo_outlined, '- photos', isLoading: true),
-                _buildStatItem(null, 'Recent: -', isLoading: true),
-              ],
-            ),
-          );
-        }
-
-        final stats = snapshot.data!;
-
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildStatItem(Icons.book_outlined, '${stats['entries']} entries'),
-            Container(
-              width: 1,
-              height: 30,
-              color: Colors.grey[300],
-            ),
-            _buildStatItem(Icons.photo_outlined, '${stats['photos']} photos'),
-            if (stats['lastMood'] != null) ...[
-              Container(
-                width: 1,
-                height: 30,
-                color: Colors.grey[300],
+  Widget _buildAppleEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Butterfly icon like in Apple Journal
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFFFF6B6B).withOpacity(0.8),
+                  const Color(0xFF4ECDC4).withOpacity(0.8),
+                  const Color(0xFF45B7D1).withOpacity(0.8),
+                  const Color(0xFFF9CA24).withOpacity(0.8),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              _buildStatItem(null, '${stats['lastMood']}', isEmoji: true),
-            ],
-          ],
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.auto_stories_outlined,
+              size: 60,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 32),
+
+          // Title
+          const Text(
+            'Start Journaling',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Subtitle
+          Text(
+            'Create your personal journal.\nTap the plus button to get started.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.7),
+              fontSize: 17,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildJournalList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _entries.length,
+      itemBuilder: (context, index) {
+        final entry = _entries[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2C2C2E),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                // Navigate to entry details - for now just show the entry creation page
+                _addNewEntry();
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Date and mood
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _formatDate(entry.timestamp),
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.6),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (entry.mood.isNotEmpty)
+                          Text(
+                            entry.mood,
+                            style: const TextStyle(fontSize: 20),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Title
+                    Text(
+                      entry.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Content preview
+                    Text(
+                      entry.content,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 16,
+                        height: 1.4,
+                      ),
+                    ),
+
+                    // Photo Grid
+                    if (entry.photoPaths.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      _buildPhotoGrid(entry.photoPaths),
+                    ],
+
+                    // Location indicator
+                    if (entry.locationName != null) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on_outlined,
+                            size: 16,
+                            color: Colors.white.withOpacity(0.6),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              entry.locationName!,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.6),
+                                fontSize: 14,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
         );
       },
     );
   }
 
-  Widget _buildStatItem(IconData? icon, String text, {bool isLoading = false, bool isEmoji = false}) {
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date).inDays;
+
+    if (difference == 0) return 'Today';
+    if (difference == 1) return 'Yesterday';
+    if (difference < 7) return '${difference} days ago';
+
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  Widget _buildPhotoGrid(List<String> photoPaths) {
+    if (photoPaths.isEmpty) return const SizedBox.shrink();
+
+    final remainingCount = photoPaths.length > 2 ? photoPaths.length - 2 : 0;
+
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      height: 200,
+      child: Row(
         children: [
-          if (isEmoji) ...[
-            Text(
-              text,
-              style: const TextStyle(fontSize: 24),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Recent mood',
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
+          // Left half - Main photo (takes up 50% width)
+          Expanded(
+            flex: 1,
+            child: GestureDetector(
+              onTap: () => _showPhotoViewer(photoPaths, 0),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: const Color(0xFF3C3C3E),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: photoPaths.isNotEmpty
+                      ? (photoPaths[0].startsWith('http')
+                            ? Image.network(
+                                photoPaths[0],
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: double.infinity,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Container(
+                                      color: const Color(0xFF3C3C3E),
+                                      child: Icon(
+                                        Icons.broken_image,
+                                        color: Colors.white.withOpacity(0.5),
+                                        size: 32,
+                                      ),
+                                    ),
+                              )
+                            : Image.file(
+                                File(photoPaths[0]),
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: double.infinity,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Container(
+                                      color: const Color(0xFF3C3C3E),
+                                      child: Icon(
+                                        Icons.broken_image,
+                                        color: Colors.white.withOpacity(0.5),
+                                        size: 32,
+                                      ),
+                                    ),
+                              ))
+                      : Container(
+                          color: const Color(0xFF3C3C3E),
+                          child: Icon(
+                            Icons.image,
+                            color: Colors.white.withOpacity(0.5),
+                            size: 32,
+                          ),
+                        ),
+                ),
               ),
             ),
-          ] else ...[
-            if (icon != null) ...[
-              isLoading 
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[400]!),
-                    ),
-                  )
-                : Icon(icon, size: 20, color: AppStyles.primaryColor),
-              const SizedBox(height: 6),
-            ],
-            Text(
-              text,
-              style: TextStyle(
-                fontSize: 12,
-                color: isLoading ? Colors.grey[400] : Colors.grey[700],
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
+          ),
+          const SizedBox(width: 8),
+          // Right half - 2x2 grid (takes up 50% width)
+          Expanded(
+            flex: 1,
+            child: Column(
+              children: [
+                // Top row
+                Expanded(
+                  child: Row(
+                    children: [
+                      // Top left - Steps walked
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: const Color(
+                              0xFF8B5A3C,
+                            ), // Walking icon brown color
+                          ),
+                          child: Center(
+                            child: Icon(
+                              Icons.directions_walk,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Top right - Second photo or additional count
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: photoPaths.length > 1
+                              ? () => _showPhotoViewer(photoPaths, 1)
+                              : null,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              color: const Color(0xFF3C3C3E),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: photoPaths.length > 1
+                                  ? (photoPaths[1].startsWith('http')
+                                        ? Image.network(
+                                            photoPaths[1],
+                                            fit: BoxFit.cover,
+                                            width: double.infinity,
+                                            height: double.infinity,
+                                            errorBuilder:
+                                                (context, error, stackTrace) =>
+                                                    Container(
+                                                      color: const Color(
+                                                        0xFF3C3C3E,
+                                                      ),
+                                                      child: Icon(
+                                                        Icons.broken_image,
+                                                        color: Colors.white
+                                                            .withOpacity(0.5),
+                                                        size: 16,
+                                                      ),
+                                                    ),
+                                          )
+                                        : Image.file(
+                                            File(photoPaths[1]),
+                                            fit: BoxFit.cover,
+                                            width: double.infinity,
+                                            height: double.infinity,
+                                            errorBuilder:
+                                                (context, error, stackTrace) =>
+                                                    Container(
+                                                      color: const Color(
+                                                        0xFF3C3C3E,
+                                                      ),
+                                                      child: Icon(
+                                                        Icons.broken_image,
+                                                        color: Colors.white
+                                                            .withOpacity(0.5),
+                                                        size: 16,
+                                                      ),
+                                                    ),
+                                          ))
+                                  : Container(
+                                      color: const Color(0xFF3C3C3E),
+                                      child: Icon(
+                                        Icons.add_photo_alternate,
+                                        color: Colors.white.withOpacity(0.5),
+                                        size: 16,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Bottom row
+                Expanded(
+                  child: Row(
+                    children: [
+                      // Bottom left - Map view
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: const Color(0xFF34C759), // Map green color
+                          ),
+                          child: Center(
+                            child: Icon(
+                              Icons.map,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Bottom right - Additional photos count
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: remainingCount > 0
+                                ? const Color(0xFF48484A).withOpacity(0.8)
+                                : const Color(0xFF3C3C3E),
+                          ),
+                          child: remainingCount > 0
+                              ? Center(
+                                  child: Text(
+                                    '+$remainingCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                )
+                              : Center(
+                                  child: Text(
+                                    '0:43', // Video duration placeholder
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.8),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );
   }
 
-  Future<Map<String, dynamic>> _getJournalStats(String tripId) async {
-    try {
-      final journalBox = await Hive.openBox('journal_entries');
-      final entries = journalBox.values
-          .where((entry) => entry.tripId == tripId)
-          .toList();
-      
-      int totalPhotos = 0;
-      String? lastMood;
-      
-      if (entries.isNotEmpty) {
-        // Sort by timestamp to get the most recent
-        entries.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-        lastMood = entries.first.mood;
-        
-        for (final entry in entries) {
-          totalPhotos += (entry.photoPaths as List<String>? ?? []).length;
-        }
-      }
-      
-      return {
-        'entries': entries.length,
-        'photos': totalPhotos,
-        'lastMood': lastMood,
-      };
-    } catch (e) {
-      return {'entries': 0, 'photos': 0, 'lastMood': null};
-    }
-  }
-
-  String _formatDate(DateTime date) {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  void _showPhotoViewer(List<String> photoPaths, int initialIndex) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(
+              '${initialIndex + 1} of ${photoPaths.length}',
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+          body: PageView.builder(
+            controller: PageController(initialPage: initialIndex),
+            itemCount: photoPaths.length,
+            itemBuilder: (context, index) {
+              final photoPath = photoPaths[index];
+              return Center(
+                child: InteractiveViewer(
+                  child: photoPath.startsWith('http')
+                      ? Image.network(
+                          photoPath,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                color: Colors.grey[800],
+                                child: const Icon(
+                                  Icons.broken_image,
+                                  color: Colors.white,
+                                  size: 64,
+                                ),
+                              ),
+                        )
+                      : Image.file(
+                          File(photoPath),
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                color: Colors.grey[800],
+                                child: const Icon(
+                                  Icons.broken_image,
+                                  color: Colors.white,
+                                  size: 64,
+                                ),
+                              ),
+                        ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
   }
 }

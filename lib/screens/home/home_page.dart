@@ -13,7 +13,8 @@ import '../../services/location_service.dart';
 import '../../services/bluetooth_sync.dart';
 import '../../services/trip_service.dart';
 import '../../constants/app_styles.dart';
-import '../../widgets/functional_liquid_nav.dart';
+import '../../models/navigation_item.dart';
+import '../../widgets/liquid_nav.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -63,7 +64,9 @@ class _HomePageState extends State<HomePage> {
           _currentUserLocation = location;
 
           // Update or add location in the list
-          final existingIndex = _userLocations.indexWhere((l) => l.userId == location.userId);
+          final existingIndex = _userLocations.indexWhere(
+            (l) => l.userId == location.userId,
+          );
           if (existingIndex != -1) {
             _userLocations[existingIndex] = location;
           } else {
@@ -79,22 +82,29 @@ class _HomePageState extends State<HomePage> {
 
   void _startBluetoothSync() async {
     // Start periodic scanning for nearby users
-    _bluetoothSyncTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
+    _bluetoothSyncTimer = Timer.periodic(const Duration(seconds: 30), (
+      timer,
+    ) async {
       if (!mounted) {
         timer.cancel();
         return;
       }
 
       try {
-        final nearbyLocations = await _bluetoothService.scanForNearbyLocations();
+        final nearbyLocations = await _bluetoothService
+            .scanForNearbyLocations();
         if (nearbyLocations.isNotEmpty && mounted) {
           setState(() {
             // Add nearby locations (avoid duplicates and merge recent data)
             for (var location in nearbyLocations) {
-              final existingIndex = _userLocations.indexWhere((l) => l.userId == location.userId);
+              final existingIndex = _userLocations.indexWhere(
+                (l) => l.userId == location.userId,
+              );
               if (existingIndex != -1) {
                 // Update existing location if this one is more recent
-                if (location.timestamp.isAfter(_userLocations[existingIndex].timestamp)) {
+                if (location.timestamp.isAfter(
+                  _userLocations[existingIndex].timestamp,
+                )) {
                   _userLocations[existingIndex] = location;
                 }
               } else {
@@ -340,7 +350,9 @@ class _TripHomePageState extends State<TripHomePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('New trip to ${destination.name} created with journal!'),
+            content: Text(
+              'New trip to ${destination.name} created with journal!',
+            ),
             backgroundColor: AppStyles.successColor,
           ),
         );
@@ -352,7 +364,8 @@ class _TripHomePageState extends State<TripHomePage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => JournalPage(tripId: trip.id, tripName: trip.destinationName),
+        builder: (context) =>
+            JournalPage(tripId: trip.id, tripName: trip.destinationName),
       ),
     );
   }
@@ -373,13 +386,17 @@ class _TripHomePageState extends State<TripHomePage> {
                       Container(
                         width: 60,
                         height: 60,
-                        decoration: AppStyles.modernButtonDecoration(borderRadius: 30),
+                        decoration: AppStyles.modernButtonDecoration(
+                          borderRadius: 30,
+                        ),
                         child: const Center(
                           child: SizedBox(
                             width: 28,
                             height: 28,
                             child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                               strokeWidth: 3,
                             ),
                           ),
@@ -388,7 +405,9 @@ class _TripHomePageState extends State<TripHomePage> {
                       const SizedBox(height: 24),
                       Text(
                         'Loading your trips...',
-                        style: AppStyles.bodyLarge.copyWith(color: AppStyles.textSecondary),
+                        style: AppStyles.bodyLarge.copyWith(
+                          color: AppStyles.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -448,7 +467,11 @@ class _TripHomePageState extends State<TripHomePage> {
           children: [
             Text(
               'Hello, Alexius',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -458,7 +481,11 @@ class _TripHomePageState extends State<TripHomePage> {
               ),
               child: Text(
                 '2 active',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                ),
               ),
             ),
           ],
@@ -477,7 +504,11 @@ class _TripHomePageState extends State<TripHomePage> {
               ),
             ],
           ),
-          child: Icon(Icons.notifications_outlined, color: Colors.black87, size: 20),
+          child: Icon(
+            Icons.notifications_outlined,
+            color: Colors.black87,
+            size: 20,
+          ),
         ),
       ],
     );
@@ -511,7 +542,8 @@ class _TripHomePageState extends State<TripHomePage> {
         'data': trip,
         'title': trip.destinationName,
         'subtitle': trip.region,
-        'description': 'Explore ${trip.destinationName} and discover amazing places',
+        'description':
+            'Explore ${trip.destinationName} and discover amazing places',
         'color': const Color(0xFF007AFF),
       });
     }
@@ -555,7 +587,10 @@ class _TripHomePageState extends State<TripHomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(8),
@@ -628,7 +663,10 @@ class _TripHomePageState extends State<TripHomePage> {
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [item['color'] as Color, (item['color'] as Color).withOpacity(0.8)],
+                    colors: [
+                      item['color'] as Color,
+                      (item['color'] as Color).withOpacity(0.8),
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -647,7 +685,10 @@ class _TripHomePageState extends State<TripHomePage> {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(8),
@@ -739,25 +780,38 @@ class _TripHomePageState extends State<TripHomePage> {
           children: [
             Text(
               'Your Travel Journals',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.black87),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.black87,
+              ),
             ),
             const Spacer(),
             GestureDetector(
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const JournalScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const JournalScreen(),
+                  ),
                 );
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF34C759),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   'View All',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
@@ -816,7 +870,12 @@ class _TripHomePageState extends State<TripHomePage> {
                     ),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Center(child: Text(journal.mood, style: const TextStyle(fontSize: 24))),
+                  child: Center(
+                    child: Text(
+                      journal.mood,
+                      style: const TextStyle(fontSize: 24),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -835,11 +894,16 @@ class _TripHomePageState extends State<TripHomePage> {
                       const SizedBox(height: 4),
                       Text(
                         trip.destinationName,
-                        style: AppStyles.bodyMedium.copyWith(color: AppStyles.textSecondary),
+                        style: AppStyles.bodyMedium.copyWith(
+                          color: AppStyles.textSecondary,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: AppStyles.glassDecoration(
                           color: Colors.green.withOpacity(0.1),
                           borderRadius: 12,
@@ -857,7 +921,10 @@ class _TripHomePageState extends State<TripHomePage> {
                   ),
                 ),
                 Container(
-                  decoration: AppStyles.glassDecoration(borderRadius: 16, withBorder: false),
+                  decoration: AppStyles.glassDecoration(
+                    borderRadius: 16,
+                    withBorder: false,
+                  ),
                   child: IconButton(
                     onPressed: () => _openTripJournal(trip),
                     icon: Icon(
@@ -884,7 +951,10 @@ class _TripHomePageState extends State<TripHomePage> {
                 children: [
                   Text(
                     journal.content,
-                    style: AppStyles.bodyMedium.copyWith(color: AppStyles.textPrimary, height: 1.4),
+                    style: AppStyles.bodyMedium.copyWith(
+                      color: AppStyles.textPrimary,
+                      height: 1.4,
+                    ),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -892,7 +962,11 @@ class _TripHomePageState extends State<TripHomePage> {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Icon(Icons.photo_camera_rounded, size: 16, color: AppStyles.primaryColor),
+                        Icon(
+                          Icons.photo_camera_rounded,
+                          size: 16,
+                          color: AppStyles.primaryColor,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           '${journal.photoPaths.length} photo${journal.photoPaths.length == 1 ? '' : 's'}',
@@ -935,7 +1009,10 @@ class _TripHomePageState extends State<TripHomePage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withOpacity(0.2), style: BorderStyle.solid),
+        border: Border.all(
+          color: Colors.grey.withOpacity(0.2),
+          style: BorderStyle.solid,
+        ),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -945,7 +1022,11 @@ class _TripHomePageState extends State<TripHomePage> {
           const SizedBox(height: 16),
           Text(
             'No journal entries yet',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
           ),
           const SizedBox(height: 8),
           Text(
